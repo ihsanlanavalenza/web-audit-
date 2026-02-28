@@ -1,0 +1,115 @@
+# Walkthrough — WebAudit Client Assistance Schedule
+
+## Ringkasan
+
+Aplikasi **WebAudit - Client Assistance Schedule** telah berhasil dibangun menggunakan **Laravel 12 + Livewire 3 + Tailwind CSS**. Seluruh fitur inti berfungsi dan telah diverifikasi di browser.
+
+---
+
+## Fitur yang Dibangun
+
+### 1. Autentikasi (Register & Login)
+- Registrasi dengan pemilihan role (Auditor/Auditi) dan dukungan invitation token
+- Login dengan redirect otomatis ke dashboard
+
+### 2. Dashboard
+- **Auditor**: statistik Total Klien, Data Request, Undangan Pending, dan Status Overview
+- **Auditi**: akses langsung ke schedule klien terkait
+- Peringatan otomatis jika profil KAP belum diisi
+
+### 3. Profil KAP
+- Form pengisian Nama KAP, PIC, dan Alamat
+- Update otomatis jika profil sudah ada
+
+### 4. Manajemen Klien
+- CRUD klien dengan modal, termasuk fitur "Hapus Semua"
+- Link langsung ke schedule per klien
+
+### 5. Sistem Undangan
+- Generate token undangan untuk Auditor/Auditi
+- Salin link undangan, status tracking (Pending/Diterima/Kedaluwarsa)
+
+### 6. Client Assistance Schedule (Tabel Utama)
+- **13 kolom interaktif**: No, Section, Account/Process, Description, Request Date, Expected Received, Input File, Status, Last Update, Date Input, Comment Client, Comment Auditor, Opsi
+- Upload file oleh Auditi → status otomatis berubah ke "On Review"
+- Dropdown status berwarna (Auditor) / badge statis (Auditi)
+- Inline comment editing per role
+- Modal CRUD untuk tambah/edit data request
+
+---
+
+## Desain Premium
+
+- **Background**: Mesh gradient + geometric pattern (Deep Blue → Crimson Red)
+- **Cards**: Glassmorphism effect (`backdrop-blur`, border transparan)
+- **Sidebar**: Gradient vertikal biru→merah, highlight halaman aktif
+- **Buttons**: Gradient hover effects terpisah untuk Auditor (biru) dan Auditi (merah)
+- **Status badges**: Warna unik per status (5 status)
+
+---
+
+## Screenshot Verifikasi
+
+````carousel
+![Halaman Login — Glassmorphism card dengan gradient background](/Users/macbook/.gemini/antigravity/brain/55476b2e-4a83-4cdd-b9dc-64b95afdcba7/login_page_verification_1772189063335.png)
+<!-- slide -->
+![Halaman Register — Form lengkap dengan role selector](/Users/macbook/.gemini/antigravity/brain/55476b2e-4a83-4cdd-b9dc-64b95afdcba7/register_page_verification_1772189078025.png)
+<!-- slide -->
+![Dashboard setelah registrasi — peringatan KAP + statistik](/Users/macbook/.gemini/antigravity/brain/55476b2e-4a83-4cdd-b9dc-64b95afdcba7/after_registration_1772233342131.png)
+<!-- slide -->
+![Dashboard setelah profil KAP disimpan — flash message sukses](/Users/macbook/.gemini/antigravity/brain/55476b2e-4a83-4cdd-b9dc-64b95afdcba7/after_profile_save_1772233398559.png)
+<!-- slide -->
+![Halaman Manajemen Klien — empty state + tombol tambah](/Users/macbook/.gemini/antigravity/brain/55476b2e-4a83-4cdd-b9dc-64b95afdcba7/clients_page_1772233424693.png)
+<!-- slide -->
+![Client Assistance Schedule — pilih klien untuk mulai](/Users/macbook/.gemini/antigravity/brain/55476b2e-4a83-4cdd-b9dc-64b95afdcba7/schedule_page_1772233427389.png)
+````
+
+## Rekaman Browser
+
+![Rekaman alur registrasi → KAP setup → dashboard → klien → schedule](/Users/macbook/.gemini/antigravity/brain/55476b2e-4a83-4cdd-b9dc-64b95afdcba7/test_register_flow_1772233174130.webp)
+
+---
+
+## Hasil Pengujian
+
+| Fitur | Status |
+|-------|--------|
+| Registrasi Auditor | ✅ Berhasil |
+| KAP Profile Save | ✅ Berhasil |
+| Dashboard Statistik | ✅ Berhasil |
+| Halaman Klien | ✅ Berhasil |
+| Halaman Undangan | ✅ Berhasil |
+| Client Assistance Schedule | ✅ Berhasil |
+| Gradient & Glassmorphism | ✅ Tampil |
+| Sidebar Navigasi | ✅ Berfungsi |
+| Flash Messages | ✅ Muncul |
+
+---
+
+## File yang Dibuat/Dimodifikasi
+
+| File | Keterangan |
+|------|-----------|
+| [.env](file:///Users/macbook/Documents/WORK%20/WebAudit-Azis/WebsiteAudit-Client-Assistance-Schedule/.env) | Konfigurasi MySQL |
+| [bootstrap/app.php](file:///Users/macbook/Documents/WORK%20/WebAudit-Azis/WebsiteAudit-Client-Assistance-Schedule/bootstrap/app.php) | Middleware registration |
+| [routes/web.php](file:///Users/macbook/Documents/WORK%20/WebAudit-Azis/WebsiteAudit-Client-Assistance-Schedule/routes/web.php) | Routing lengkap |
+| [resources/css/app.css](file:///Users/macbook/Documents/WORK%20/WebAudit-Azis/WebsiteAudit-Client-Assistance-Schedule/resources/css/app.css) | Desain premium 229 baris |
+| [resources/views/layouts/app.blade.php](file:///Users/macbook/Documents/WORK%20/WebAudit-Azis/WebsiteAudit-Client-Assistance-Schedule/resources/views/layouts/app.blade.php) | Layout utama + sidebar |
+| [resources/views/layouts/guest.blade.php](file:///Users/macbook/Documents/WORK%20/WebAudit-Azis/WebsiteAudit-Client-Assistance-Schedule/resources/views/layouts/guest.blade.php) | Layout auth |
+| `app/Models/*.php` | 5 model (User, KapProfile, Client, DataRequest, Invitation) |
+| `app/Http/Middleware/*.php` | 2 middleware (Auditor, Auditi) |
+| `app/Livewire/*.php` | 7 komponen Livewire |
+| `resources/views/livewire/*.blade.php` | 7 views Blade |
+| `database/migrations/*.php` | 5 file migrasi |
+
+## Cara Menjalankan
+
+```bash
+# Terminal 1 — Laravel server
+php artisan serve --port=8080
+
+# Terminal 2 — Vite dev server
+npm run dev
+```
+
+Buka `http://127.0.0.1:8080` di browser.
