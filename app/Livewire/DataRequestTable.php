@@ -17,7 +17,8 @@ class DataRequestTable extends Component
 
     // Form fields
     public int $no = 0;
-    public string $section = '';
+    public string $section_code = '';
+    public string $section_no_input = '';
     public string $account_process = '';
     public string $description = '';
     public ?string $request_date = null;
@@ -25,12 +26,14 @@ class DataRequestTable extends Component
     public string $status = 'pending';
     public string $comment_client = '';
     public string $comment_auditor = '';
-    public ?string $date_input = null;
 
     // File & comments
     public $uploadFile = null;
     public ?int $commentRowId = null;
     public string $newComment = '';
+
+    // File detail expansion
+    public ?int $expandedFileRow = null;
 
     public function mount(?int $clientId = null)
     {
@@ -47,7 +50,7 @@ class DataRequestTable extends Component
 
     public function openAddModal()
     {
-        $this->reset(['no', 'section', 'account_process', 'description', 'request_date', 'expected_received', 'status', 'comment_client', 'comment_auditor', 'date_input', 'editId']);
+        $this->reset(['no', 'section_code', 'section_no_input', 'account_process', 'description', 'request_date', 'expected_received', 'status', 'comment_client', 'comment_auditor', 'editId']);
         $this->status = 'pending';
 
         // Auto-increment no
@@ -63,7 +66,8 @@ class DataRequestTable extends Component
         $row = $this->getQuery()->findOrFail($id);
         $this->editId = $row->id;
         $this->no = $row->no;
-        $this->section = $row->section ?? '';
+        $this->section_code = $row->section_code ?? '';
+        $this->section_no_input = $row->section_no !== null ? (string) $row->section_no : '';
         $this->account_process = $row->account_process ?? '';
         $this->description = $row->description ?? '';
         $this->request_date = $row->request_date?->format('Y-m-d');
@@ -71,7 +75,6 @@ class DataRequestTable extends Component
         $this->status = $row->status;
         $this->comment_client = $row->comment_client ?? '';
         $this->comment_auditor = $row->comment_auditor ?? '';
-        $this->date_input = $row->date_input?->format('Y-m-d');
         $this->showModal = true;
     }
 
@@ -79,7 +82,8 @@ class DataRequestTable extends Component
     {
         $this->validate([
             'no' => 'required|integer|min:1',
-            'section' => 'nullable|max:255',
+            'section_code' => 'nullable|max:10',
+            'section_no_input' => 'nullable|integer|min:0',
             'account_process' => 'nullable|max:255',
             'description' => 'nullable',
             'request_date' => 'nullable|date',
@@ -93,7 +97,8 @@ class DataRequestTable extends Component
             'client_id' => $this->clientId,
             'kap_id' => $kap,
             'no' => $this->no,
-            'section' => $this->section,
+            'section_code' => $this->section_code ?: null,
+            'section_no' => $this->section_no_input !== '' ? (int) $this->section_no_input : null,
             'account_process' => $this->account_process,
             'description' => $this->description,
             'request_date' => $this->request_date,
@@ -101,7 +106,6 @@ class DataRequestTable extends Component
             'status' => $this->status,
             'comment_client' => $this->comment_client,
             'comment_auditor' => $this->comment_auditor,
-            'date_input' => $this->date_input,
         ];
 
         if ($this->editId) {
@@ -121,6 +125,11 @@ class DataRequestTable extends Component
         session()->flash('success', 'Data Request berhasil dihapus!');
     }
 
+    public function toggleFileDetail(int $id)
+    {
+        $this->expandedFileRow = $this->expandedFileRow === $id ? null : $id;
+    }
+
     public function uploadFileForRow(int $id)
     {
         $this->validate(['uploadFile' => 'required|file|max:10240']);
@@ -131,10 +140,11 @@ class DataRequestTable extends Component
         $row->update([
             'input_file' => $path,
             'status' => DataRequest::STATUS_ON_REVIEW,
-            'date_input' => now()->toDateString(),
+            'date_input' => now(), // Auto-timestamp saat upload
         ]);
 
         $this->uploadFile = null;
+        $this->expandedFileRow = null;
         session()->flash('success', 'File berhasil diupload! Status: On Review.');
     }
 

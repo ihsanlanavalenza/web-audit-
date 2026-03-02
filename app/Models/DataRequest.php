@@ -13,7 +13,8 @@ class DataRequest extends Model
         'client_id',
         'kap_id',
         'no',
-        'section',
+        'section_code',
+        'section_no',
         'account_process',
         'description',
         'request_date',
@@ -24,6 +25,7 @@ class DataRequest extends Model
         'comment_auditor',
         'date_input',
         'last_update',
+        'followup_sent_at',
     ];
 
     protected function casts(): array
@@ -31,9 +33,20 @@ class DataRequest extends Model
         return [
             'request_date' => 'date',
             'expected_received' => 'date',
-            'date_input' => 'date',
+            'date_input' => 'datetime',
             'last_update' => 'datetime',
+            'followup_sent_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Accessor: Gabungkan section_code + section_no → "A1"
+     */
+    public function getSectionAttribute(): string
+    {
+        $code = $this->section_code ?? '';
+        $no = $this->section_no ?? '';
+        return trim($code . $no) ?: '-';
     }
 
     public const STATUS_PARTIALLY_RECEIVED = 'partially_received';

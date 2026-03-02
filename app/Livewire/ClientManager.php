@@ -10,6 +10,7 @@ class ClientManager extends Component
     public string $nama_client = '';
     public string $nama_pic = '';
     public string $no_contact = '';
+    public string $alamat = '';
     public string $tahun_audit = '';
     public bool $showModal = false;
     public bool $showDeleteConfirm = false;
@@ -21,14 +22,15 @@ class ClientManager extends Component
             'nama_client' => 'required|min:3|max:255',
             'nama_pic' => 'required|min:3|max:255',
             'no_contact' => 'required|min:8|max:20',
-            'tahun_audit' => 'required|digits:4',
+            'alamat' => 'nullable|max:500',
+            'tahun_audit' => 'required|date',
         ];
     }
 
     public function openModal()
     {
-        $this->reset(['nama_client', 'nama_pic', 'no_contact', 'tahun_audit', 'editId']);
-        $this->tahun_audit = date('Y');
+        $this->reset(['nama_client', 'nama_pic', 'no_contact', 'alamat', 'tahun_audit', 'editId']);
+        $this->tahun_audit = date('Y') . '-12-31';
         $this->showModal = true;
     }
 
@@ -39,7 +41,8 @@ class ClientManager extends Component
         $this->nama_client = $client->nama_client;
         $this->nama_pic = $client->nama_pic;
         $this->no_contact = $client->no_contact;
-        $this->tahun_audit = $client->tahun_audit;
+        $this->alamat = $client->alamat ?? '';
+        $this->tahun_audit = $client->tahun_audit?->format('Y-m-d') ?? '';
         $this->showModal = true;
     }
 
@@ -54,6 +57,7 @@ class ClientManager extends Component
                 'nama_client' => $this->nama_client,
                 'nama_pic' => $this->nama_pic,
                 'no_contact' => $this->no_contact,
+                'alamat' => $this->alamat,
                 'tahun_audit' => $this->tahun_audit,
             ]);
             session()->flash('success', 'Klien berhasil diperbarui!');
@@ -62,6 +66,7 @@ class ClientManager extends Component
                 'nama_client' => $this->nama_client,
                 'nama_pic' => $this->nama_pic,
                 'no_contact' => $this->no_contact,
+                'alamat' => $this->alamat,
                 'tahun_audit' => $this->tahun_audit,
             ]);
             session()->flash('success', 'Klien berhasil ditambahkan!');

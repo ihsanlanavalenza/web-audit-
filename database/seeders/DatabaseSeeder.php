@@ -19,5 +19,8 @@ class DatabaseSeeder extends Seeder
                 'role' => 'super_admin',
             ]
         );
+
+        // Study Case Data
+        $this->call(StudyCaseSeeder::class);
     }
 }

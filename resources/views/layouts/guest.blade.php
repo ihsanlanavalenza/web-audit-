@@ -3,34 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $title ?? 'WebAudit' }}</title>
+    <title>{{ $title ?? 'WebAudit' }} — Client Assistance Schedule</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
     <style>* { font-family: 'Inter', sans-serif; }</style>
 </head>
-<body class="bg-mesh text-white antialiased">
-    {{-- Dot Grid Pattern Canvas --}}
-    <div class="bg-canvas" aria-hidden="true"></div>
+<body class="antialiased">
 
-    <div class="min-h-screen flex items-center justify-center px-4 py-8 sm:py-12 relative z-10">
+    <div class="min-h-screen flex items-center justify-center px-4 py-8 sm:py-12">
         <div class="w-full max-w-md">
             {{-- Logo --}}
-            <div class="text-center mb-6 sm:mb-8">
-                <div class="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-red-500 mb-4 shadow-lg animate-glow">
-                    <span class="text-xl sm:text-2xl font-extrabold tracking-tighter">WA</span>
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-400 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-200">
+                    <span class="text-white font-bold text-xl">WA</span>
                 </div>
-                <h1 class="text-xl sm:text-2xl font-bold tracking-tight">WebAudit</h1>
-                <p class="text-xs sm:text-sm text-white/40 mt-1">Client Assistance Schedule</p>
+                <h1 class="text-2xl font-bold text-slate-900">WebAudit</h1>
+                <p class="text-sm text-slate-500 mt-1">Client Assistance Schedule</p>
             </div>
 
-            {{-- Content Slot --}}
+            {{-- Content Card --}}
             <div class="glass-card p-6 sm:p-8">
                 {{ $slot }}
             </div>
         </div>
     </div>
+
     @livewireScripts
 </body>
 </html>

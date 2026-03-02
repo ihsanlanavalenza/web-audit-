@@ -14,8 +14,16 @@ class Client extends Model
         'nama_client',
         'nama_pic',
         'no_contact',
+        'alamat',
         'tahun_audit',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'tahun_audit' => 'date',
+        ];
+    }
 
     public function kapProfile()
     {

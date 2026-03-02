@@ -1,8 +1,8 @@
 <div>
     <div class="flex items-center justify-between mb-6">
         <div>
-            <h1 class="text-2xl font-bold tracking-tight">Client Assistance Schedule</h1>
-            <p class="text-sm text-white/50 mt-1">Jadwal permintaan dan tracking data audit</p>
+            <h1 class="text-2xl font-bold tracking-tight text-slate-900">Client Assistance Schedule</h1>
+            <p class="text-sm text-slate-500 mt-1">Jadwal permintaan dan tracking data audit</p>
         </div>
         <div class="flex items-center gap-3">
             {{-- Client Selector (Auditor Only) --}}
@@ -25,14 +25,14 @@
 
     @if(!$clientId)
     <div class="glass-card p-12 text-center">
-        <div class="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8 text-white/30" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125"/></svg>
+        <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125"/></svg>
         </div>
-        <p class="text-white/40 text-sm">Pilih klien terlebih dahulu untuk melihat schedule.</p>
+        <p class="text-slate-400 text-sm">Pilih klien terlebih dahulu untuk melihat schedule.</p>
     </div>
     @elseif($requests->count() === 0)
     <div class="glass-card p-12 text-center">
-        <p class="text-white/40 text-sm">Belum ada data request untuk klien ini.</p>
+        <p class="text-slate-400 text-sm">Belum ada data request untuk klien ini.</p>
     </div>
     @else
     {{-- Data Request Table --}}
@@ -53,45 +53,88 @@
                         <th>Date Input</th>
                         <th>Comment (Client)</th>
                         <th>Comment (Auditor)</th>
+                        @if(auth()->user()->isAuditor())
                         <th>Opsi</th>
+                        @endif
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($requests as $req)
                     <tr wire:key="req-{{ $req->id }}">
-                        <td class="font-mono font-semibold">{{ $req->no }}</td>
-                        <td>{{ $req->section ?? '-' }}</td>
-                        <td>{{ $req->account_process ?? '-' }}</td>
-                        <td class="max-w-[200px] truncate" title="{{ $req->description }}">{{ $req->description ?? '-' }}</td>
-                        <td class="whitespace-nowrap">{{ $req->request_date?->format('d/m/Y') ?? '-' }}</td>
-                        <td class="whitespace-nowrap">{{ $req->expected_received?->format('d/m/Y') ?? '-' }}</td>
+                        <td class="font-mono font-semibold text-slate-900">{{ $req->no }}</td>
+                        <td class="text-slate-600">{{ $req->section }}</td>
+
+                        {{-- Account Process - Auditi: readonly --}}
+                        <td class="text-slate-600">{{ $req->account_process ?? '-' }}</td>
+
+                        {{-- Description - Auditi: readonly --}}
+                        <td class="max-w-[200px] truncate text-slate-600" title="{{ $req->description }}">{{ $req->description ?? '-' }}</td>
+
+                        {{-- Request Date - Auditi: readonly --}}
+                        <td class="whitespace-nowrap text-slate-600">{{ $req->request_date?->format('d/m/Y') ?? '-' }}</td>
+
+                        {{-- Expected Received - Auditi: readonly --}}
+                        <td class="whitespace-nowrap text-slate-600">{{ $req->expected_received?->format('d/m/Y') ?? '-' }}</td>
+
+                        {{-- Input File - Triangle Icon (Green = uploaded, Red = not uploaded) --}}
                         <td>
-                            @if($req->input_file)
-                                <a href="{{ asset('storage/' . $req->input_file) }}" target="_blank" class="text-blue-400 hover:text-blue-300 text-xs font-medium underline">
-                                    📎 Lihat File
-                                </a>
-                            @else
-                                @if(auth()->user()->isAuditi())
-                                <div x-data="{ uploading: false }">
-                                    <input type="file" wire:model="uploadFile"
-                                        x-on:livewire-upload-start="uploading = true"
-                                        x-on:livewire-upload-finish="uploading = false"
-                                        class="hidden" id="file-{{ $req->id }}"
-                                        x-on:change="$wire.uploadFileForRow({{ $req->id }})">
-                                    <label for="file-{{ $req->id }}" class="cursor-pointer inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-white/60 hover:text-white transition">
-                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
-                                        Upload
-                                    </label>
-                                    <div x-show="uploading" class="text-xs text-amber-400 mt-1">Uploading...</div>
-                                </div>
+                            <div class="flex items-center gap-2">
+                                {{-- Triangle Icon Button --}}
+                                <button wire:click="toggleFileDetail({{ $req->id }})"
+                                    class="flex items-center justify-center w-7 h-7 rounded-lg transition-all duration-200 hover:scale-110 {{ $req->input_file ? 'bg-emerald-100 hover:bg-emerald-200' : 'bg-red-100 hover:bg-red-200' }}"
+                                    title="{{ $req->input_file ? 'File sudah diupload — klik untuk detail' : 'File belum diupload — klik untuk detail' }}">
+                                    <svg class="w-3.5 h-3.5 transition-transform duration-200 {{ $expandedFileRow === $req->id ? 'rotate-90' : '' }} {{ $req->input_file ? 'text-emerald-600' : 'text-red-500' }}" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M8 5v14l11-7z"/>
+                                    </svg>
+                                </button>
+
+                                @if($req->input_file)
+                                <span class="text-xs text-emerald-600 font-medium">Uploaded</span>
                                 @else
-                                <span class="text-xs text-white/30">—</span>
+                                <span class="text-xs text-red-500 font-medium">Belum</span>
                                 @endif
+                            </div>
+
+                            {{-- Expanded File Detail --}}
+                            @if($expandedFileRow === $req->id)
+                            <div class="mt-2 p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-2">
+                                @if($req->input_file)
+                                    <div class="flex items-center gap-2">
+                                        <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        <span class="text-slate-700 font-medium">File telah diupload</span>
+                                    </div>
+                                    <div class="text-slate-500">{{ basename($req->input_file) }}</div>
+                                    <a href="{{ asset('storage/' . $req->input_file) }}" target="_blank" class="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                        Download
+                                    </a>
+                                @else
+                                    {{-- Upload area: Both auditor and auditi can upload --}}
+                                    <div x-data="{ uploading: false }" class="space-y-2">
+                                        <div class="flex items-center gap-2">
+                                            <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
+                                            <span class="text-slate-600">Belum ada file yang diupload</span>
+                                        </div>
+                                        <input type="file" wire:model="uploadFile"
+                                            x-on:livewire-upload-start="uploading = true"
+                                            x-on:livewire-upload-finish="uploading = false"
+                                            class="hidden" id="file-{{ $req->id }}"
+                                            x-on:change="$wire.uploadFileForRow({{ $req->id }})">
+                                        <label for="file-{{ $req->id }}" class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition font-medium">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+                                            Upload File
+                                        </label>
+                                        <div x-show="uploading" class="text-amber-600">Uploading...</div>
+                                    </div>
+                                @endif
+                            </div>
                             @endif
                         </td>
+
+                        {{-- Status --}}
                         <td>
                             @if(auth()->user()->isAuditor())
-                            <select wire:change="updateStatus({{ $req->id }}, $event.target.value)" class="text-xs rounded-full px-2 py-1 border-0 badge-{{ str_replace('_', '-', $req->status) }} cursor-pointer">
+                            <select wire:change="updateStatus({{ $req->id }}, $event.target.value)" class="text-xs rounded-full px-2 py-1 border cursor-pointer badge-{{ str_replace('_', '-', $req->status) }}">
                                 @foreach($statuses as $key => $label)
                                 <option value="{{ $key }}" {{ $req->status === $key ? 'selected' : '' }}>{{ $label }}</option>
                                 @endforeach
@@ -102,47 +145,65 @@
                             </span>
                             @endif
                         </td>
-                        <td class="whitespace-nowrap text-xs text-white/50">{{ $req->last_update?->format('d/m/Y H:i') ?? '-' }}</td>
-                        <td class="whitespace-nowrap">{{ $req->date_input?->format('d/m/Y') ?? '-' }}</td>
-                        {{-- Comments --}}
+
+                        {{-- Last Update --}}
+                        <td class="whitespace-nowrap text-xs text-slate-400">{{ $req->last_update?->format('d/m/Y H:i') ?? '-' }}</td>
+
+                        {{-- Date Input (Auto-filled, tidak bisa diisi manual) --}}
+                        <td class="whitespace-nowrap text-slate-600">
+                            @if($req->date_input)
+                                <div class="text-xs">
+                                    <div class="font-medium text-slate-700">{{ $req->date_input->format('d/m/Y') }}</div>
+                                    <div class="text-slate-400">{{ $req->date_input->format('H:i') }}</div>
+                                </div>
+                            @else
+                                <span class="text-xs text-slate-300 italic">Auto-fill saat upload</span>
+                            @endif
+                        </td>
+
+                        {{-- Comment Client --}}
                         <td>
-                            @if($commentRowId === $req->id && !auth()->user()->isAuditor())
+                            @if($commentRowId === $req->id && auth()->user()->isAuditi())
                             <div class="flex gap-1">
                                 <input wire:model="newComment" type="text" class="form-input text-xs py-1 px-2" style="min-width:100px">
-                                <button wire:click="saveComment({{ $req->id }})" class="text-emerald-400 text-xs">✓</button>
+                                <button wire:click="saveComment({{ $req->id }})" class="text-emerald-600 text-xs font-bold">✓</button>
                             </div>
                             @else
                             <div class="flex items-center gap-1">
-                                <span class="text-xs truncate max-w-[120px]" title="{{ $req->comment_client }}">{{ $req->comment_client ?: '-' }}</span>
+                                <span class="text-xs truncate max-w-[120px] text-slate-600" title="{{ $req->comment_client }}">{{ $req->comment_client ?: '-' }}</span>
                                 @if(auth()->user()->isAuditi())
-                                <button wire:click="openComment({{ $req->id }})" class="text-blue-400 text-xs">✎</button>
+                                <button wire:click="openComment({{ $req->id }})" class="text-blue-600 text-xs hover:text-blue-700" title="Edit komentar">✎</button>
                                 @endif
                             </div>
                             @endif
                         </td>
+
+                        {{-- Comment Auditor --}}
                         <td>
                             @if($commentRowId === $req->id && auth()->user()->isAuditor())
                             <div class="flex gap-1">
                                 <input wire:model="newComment" type="text" class="form-input text-xs py-1 px-2" style="min-width:100px">
-                                <button wire:click="saveComment({{ $req->id }})" class="text-emerald-400 text-xs">✓</button>
+                                <button wire:click="saveComment({{ $req->id }})" class="text-emerald-600 text-xs font-bold">✓</button>
                             </div>
                             @else
                             <div class="flex items-center gap-1">
-                                <span class="text-xs truncate max-w-[120px]" title="{{ $req->comment_auditor }}">{{ $req->comment_auditor ?: '-' }}</span>
+                                <span class="text-xs truncate max-w-[120px] text-slate-600" title="{{ $req->comment_auditor }}">{{ $req->comment_auditor ?: '-' }}</span>
                                 @if(auth()->user()->isAuditor())
-                                <button wire:click="openComment({{ $req->id }})" class="text-blue-400 text-xs">✎</button>
+                                <button wire:click="openComment({{ $req->id }})" class="text-blue-600 text-xs hover:text-blue-700" title="Edit komentar">✎</button>
                                 @endif
                             </div>
                             @endif
                         </td>
+
+                        {{-- Opsi (Auditor Only) --}}
+                        @if(auth()->user()->isAuditor())
                         <td>
-                            @if(auth()->user()->isAuditor())
                             <div class="flex gap-2">
-                                <button wire:click="editRow({{ $req->id }})" class="text-blue-400 hover:text-blue-300 text-xs font-medium">Edit</button>
-                                <button wire:click="deleteRow({{ $req->id }})" wire:confirm="Yakin hapus baris ini?" class="text-red-400 hover:text-red-300 text-xs font-medium">Hapus</button>
+                                <button wire:click="editRow({{ $req->id }})" class="text-blue-600 hover:text-blue-700 text-xs font-medium">Edit</button>
+                                <button wire:click="deleteRow({{ $req->id }})" wire:confirm="Yakin hapus baris ini?" class="text-red-600 hover:text-red-700 text-xs font-medium">Hapus</button>
                             </div>
-                            @endif
                         </td>
+                        @endif
                     </tr>
                     @endforeach
                 </tbody>
@@ -151,21 +212,27 @@
     </div>
     @endif
 
-    {{-- Add/Edit Modal --}}
+    {{-- Add/Edit Modal (Auditor Only) --}}
     @if($showModal)
     <div class="modal-overlay" wire:click.self="$set('showModal', false)">
         <div class="modal-content p-8" style="max-width: 48rem;">
-            <h3 class="text-lg font-bold mb-6">{{ $editId ? 'Edit Data Request' : 'Tambah Data Request' }}</h3>
+            <h3 class="text-lg font-bold mb-6 text-slate-900">{{ $editId ? 'Edit Data Request' : 'Tambah Data Request' }}</h3>
             <form wire:submit="save" class="space-y-4">
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-3 gap-4">
                     <div>
                         <label class="form-label">No</label>
                         <input wire:model="no" type="number" class="form-input" min="1">
-                        @error('no') <p class="text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
+                        @error('no') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
                     </div>
                     <div>
-                        <label class="form-label">Section</label>
-                        <input wire:model="section" type="text" class="form-input" placeholder="Bagian / Section">
+                        <label class="form-label">Section Code</label>
+                        <input wire:model="section_code" type="text" class="form-input" placeholder="Contoh: A, B, C">
+                        @error('section_code') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="form-label">Section No</label>
+                        <input wire:model="section_no_input" type="number" class="form-input" placeholder="Contoh: 1, 2, 3" min="0">
+                        @error('section_no_input') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
                     </div>
                 </div>
                 <div>
@@ -180,12 +247,12 @@
                     <div>
                         <label class="form-label">Request Date</label>
                         <input wire:model="request_date" type="date" class="form-input">
-                        @error('request_date') <p class="text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
+                        @error('request_date') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label class="form-label">Expected Received</label>
                         <input wire:model="expected_received" type="date" class="form-input">
-                        @error('expected_received') <p class="text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
+                        @error('expected_received') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
@@ -198,8 +265,10 @@
                         </select>
                     </div>
                     <div>
-                        <label class="form-label">Date Input</label>
-                        <input wire:model="date_input" type="date" class="form-input">
+                        <label class="form-label text-slate-400">Date Input</label>
+                        <div class="form-input bg-slate-50 text-slate-400 cursor-not-allowed text-sm">
+                            <em>Otomatis terisi saat upload file</em>
+                        </div>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
