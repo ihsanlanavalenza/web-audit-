@@ -15,13 +15,7 @@
             @error('email') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
         </div>
 
-        <div>
-            <label class="form-label">Peran</label>
-            <select wire:model="role" class="form-input" id="register-role" {{ $invitation_token ? 'disabled' : '' }}>
-                <option value="auditor">🔵 Auditor</option>
-                <option value="auditi">🔴 Auditi</option>
-            </select>
-        </div>
+        <input type="hidden" wire:model="role" value="auditi">
 
         <div>
             <label class="form-label">Password</label>

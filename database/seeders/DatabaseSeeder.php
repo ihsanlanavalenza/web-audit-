@@ -20,7 +20,7 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // Study Case Data
+        // Study Case Datai
         $this->call(StudyCaseSeeder::class);
     }
 }

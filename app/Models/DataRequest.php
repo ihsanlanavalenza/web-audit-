@@ -6,6 +6,30 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
+/**
+ * @property int $id
+ * @property int $no
+ * @property int|null $client_id
+ * @property int|null $kap_id
+ * @property int|null $pic_id
+ * @property string|null $section_code
+ * @property string|null $section_no
+ * @property string|null $account_process
+ * @property string|null $description
+ * @property Carbon|null $request_date
+ * @property Carbon|null $expected_received
+ * @property array<int, mixed>|null $input_file
+ * @property string|null $status
+ * @property string|null $comment_client
+ * @property string|null $comment_auditor
+ * @property Carbon|null $date_input
+ * @property Carbon|null $last_update
+ * @property Carbon|null $followup_sent_at
+ * @property-read \App\Models\Client|null $client
+ * @property-read \App\Models\KapProfile|null $kapProfile
+ * @property-read \App\Models\User|null $pic
+ * @property-read string $section
+ */
 class DataRequest extends Model
 {
     use HasFactory;
@@ -13,6 +37,7 @@ class DataRequest extends Model
     protected $fillable = [
         'client_id',
         'kap_id',
+        'pic_id',
         'no',
         'section_code',
         'section_no',
@@ -87,10 +112,92 @@ class DataRequest extends Model
         return $this->belongsTo(KapProfile::class, 'kap_id');
     }
 
+    public function pic()
+    {
+        return $this->belongsTo(User::class, 'pic_id');
+    }
+
     protected static function booted(): void
     {
         static::saving(function (DataRequest $model) {
             $model->last_update = Carbon::now();
         });
+
+        static::created(function (DataRequest $model) {
+            $model->logActivity('created', 'Data Request created.');
+        });
+
+        static::updated(function (DataRequest $model) {
+            $changes = $model->getChanges();
+            unset($changes['last_update'], $changes['updated_at']);
+
+            if (empty($changes)) return;
+
+            $action = 'updated';
+            $desc = 'Data Request updated.';
+
+            if (array_key_exists('input_file', $changes)) {
+                $action = 'file_uploaded';
+                $desc = 'File uploaded.';
+            } elseif (array_key_exists('status', $changes)) {
+                $action = 'status_changed';
+                $desc = "Status changed from '{$model->getOriginal('status')}' to '{$model->status}'.";
+            }
+
+            $model->logActivity($action, $desc, $model->getOriginal(), $model->getAttributes());
+        });
+
+        static::deleted(function (DataRequest $model) {
+            $model->logActivity('deleted', 'Data Request deleted.');
+        });
+    }
+
+    /**
+     * Normalisasi input_file ke format versi baru.
+     * Legacy format (array of paths) → [{version, files, uploaded_at, uploaded_by}]
+     */
+    public function normalizeInputFileVersions(): array
+    {
+        $files = $this->input_file ?? [];
+
+        if (!is_array($files) || count($files) === 0) {
+            return [];
+        }
+
+        // Sudah dalam format berversi
+        if (isset($files[0]['version'])) {
+            return $files;
+        }
+
+        // Legacy format — migrate ke format versi
+        return [
+            [
+                'version'     => 1,
+                'files'       => $files,
+                'uploaded_at' => $this->date_input
+                    ? $this->date_input->format('Y-m-d H:i:s')
+                    : now()->format('Y-m-d H:i:s'),
+                'uploaded_by' => 'Auto-migrated',
+            ],
+        ];
+    }
+
+    public function activityLogs()
+    {
+        return $this->morphMany(ActivityLog::class, 'subject', 'model_type', 'model_id');
+    }
+
+    public function logActivity(string $action, string $description, ?array $old = null, ?array $new = null)
+    {
+        $userId = \Illuminate\Support\Facades\Auth::id();
+        ActivityLog::create([
+            'user_id' => $userId,
+            'model_type' => get_class($this),
+            'model_id' => $this->id,
+            'action' => $action,
+            'description' => $description,
+            'old_payload' => $old,
+            'new_payload' => $new,
+        ]);
     }
 }

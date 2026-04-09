@@ -16,6 +16,14 @@
             @endif
 
             @if ($clientId && auth()->user()->isAuditor())
+                <button wire:click="exportCsv" class="btn-ghost text-sm flex items-center gap-2 border border-slate-200"
+                    id="btn-export">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    Export CSV
+                </button>
                 <button wire:click="openAddModal" class="btn-auditor text-sm" id="btn-add-request">
                     + Tambah Request
                 </button>
@@ -34,7 +42,7 @@
             </div>
             <p class="text-slate-400 text-sm">Pilih klien terlebih dahulu untuk melihat schedule.</p>
         </div>
-    @elseif($requests->count() === 0)
+    @elseif(!$requests || $requests->isEmpty())
         <div class="glass-card p-12 text-center">
             <p class="text-slate-400 text-sm">Belum ada data request untuk klien ini.</p>
         </div>
@@ -63,8 +71,9 @@
                     </thead>
                     <tbody>
                         @php
-                            // Pre-calculate rowspans for section_code, section, and account_process grouping
-                            $items = $requests->values();
+                            $items = $requests instanceof \Illuminate\Pagination\AbstractPaginator
+                                ? collect($requests->items())
+                                : collect($requests);
                             $sectionCodeSpans = [];
                             $sectionNoSpans = [];
                             $accountSpans = [];
@@ -155,8 +164,7 @@
 
                                         @if (is_array($req->input_file) && count($req->input_file) > 0)
                                             <span
-                                                class="text-xs text-emerald-600 font-medium">{{ count($req->input_file) }}
-                                                File</span>
+                                                class="text-xs text-emerald-600 font-medium">{{ isset($req->input_file[0]['version']) ? count($req->input_file) . ' Versi' : count($req->input_file) . ' File' }}</span>
                                         @else
                                             <span class="text-xs text-red-500 font-medium">Belum</span>
                                         @endif
@@ -176,22 +184,54 @@
                                                     <span class="text-slate-700 font-medium">File telah diupload:</span>
                                                 </div>
                                                 <div class="space-y-1">
-                                                    @foreach ($req->input_file as $idx => $path)
-                                                        <div
-                                                            class="flex items-center justify-between bg-white p-2 rounded border border-slate-100">
-                                                            <span class="text-slate-500 truncate max-w-37.5"
-                                                                title="{{ basename($path) }}">{{ basename($path) }}</span>
-                                                            <a href="{{ asset('storage/' . $path) }}" target="_blank"
-                                                                class="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition font-medium">
-                                                                <svg class="w-3 h-3" fill="none"
-                                                                    stroke="currentColor" stroke-width="2"
-                                                                    viewBox="0 0 24 24">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                                                </svg>
-                                                                Unduh
-                                                            </a>
-                                                        </div>
+                                                    @php
+                                                        $versions =
+                                                            isset($req->input_file[0]) && is_array($req->input_file[0])
+                                                                ? $req->input_file
+                                                                : [
+                                                                    [
+                                                                        'version' => 1,
+                                                                        'files' => $req->input_file,
+                                                                        'uploaded_at' => $req->date_input?->format(
+                                                                            'Y-m-d H:i:s',
+                                                                        ),
+                                                                    ],
+                                                                ];
+                                                    @endphp
+
+                                                    @foreach (array_reverse($versions) as $verRow)
+                                                        @if (isset($verRow['files']) && count($verRow['files']) > 0)
+                                                            <div class="mb-3">
+                                                                <div
+                                                                    class="text-[10px] font-bold text-slate-500 mb-1 uppercase">
+                                                                    Versi {{ $verRow['version'] ?? 1 }} (<span
+                                                                        class="font-normal">{{ \Carbon\Carbon::parse($verRow['uploaded_at'] ?? now())->format('d M Y H:i') }}</span>)
+                                                                </div>
+                                                                <div class="space-y-1">
+                                                                    @foreach ($verRow['files'] as $path)
+                                                                        <div
+                                                                            class="flex items-center justify-between bg-white p-2 rounded border border-slate-100">
+                                                                            <span
+                                                                                class="text-slate-500 truncate max-w-37.5"
+                                                                                title="{{ basename($path) }}">{{ basename($path) }}</span>
+                                                                            <a href="{{ asset('storage/' . $path) }}"
+                                                                                target="_blank"
+                                                                                class="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition font-medium">
+                                                                                <svg class="w-3 h-3" fill="none"
+                                                                                    stroke="currentColor"
+                                                                                    stroke-width="2"
+                                                                                    viewBox="0 0 24 24">
+                                                                                    <path stroke-linecap="round"
+                                                                                        stroke-linejoin="round"
+                                                                                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                                                </svg>
+                                                                                Unduh
+                                                                            </a>
+                                                                        </div>
+                                                                    @endforeach
+                                                                </div>
+                                                            </div>
+                                                        @endif
                                                     @endforeach
                                                 </div>
 
@@ -219,7 +259,8 @@
                                                 <div x-data="{ uploading: false }" class="space-y-2">
                                                     <div class="flex flex-col items-center gap-2">
                                                         <svg class="w-5 h-5 text-red-400" fill="none"
-                                                            stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                            stroke="currentColor" stroke-width="2"
+                                                            viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                                 d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
                                                         </svg>
@@ -330,12 +371,22 @@
                                 {{-- Opsi (Auditor Only) --}}
                                 @if (auth()->user()->isAuditor())
                                     <td>
-                                        <div class="flex gap-2">
-                                            <button wire:click="editRow({{ $req->id }})"
-                                                class="text-blue-600 hover:text-blue-700 text-xs font-medium">Edit</button>
-                                            <button wire:click="deleteRow({{ $req->id }})"
-                                                wire:confirm="Yakin hapus baris ini?"
-                                                class="text-red-600 hover:text-red-700 text-xs font-medium">Hapus</button>
+                                        <div class="flex flex-col gap-1 w-full mt-2">
+                                            @if ($req->status === 'on_review')
+                                                <button wire:click="requestRevision({{ $req->id }})"
+                                                    title="Kirim notifikasi revisi ke Auditi (Wajib isi Komentar Auditor)"
+                                                    class="w-full text-center bg-amber-100 hover:bg-amber-200 text-amber-700 text-[10px] font-bold py-1 rounded">Minta
+                                                    Revisi</button>
+                                            @endif
+
+                                            <div
+                                                class="flex items-center justify-between w-full mt-1 border-t border-slate-100 pt-1">
+                                                <button wire:click="editRow({{ $req->id }})"
+                                                    class="text-blue-600 hover:text-blue-700 text-xs font-medium">Edit</button>
+                                                <button wire:click="deleteRow({{ $req->id }})"
+                                                    wire:confirm="Yakin hapus Data Request '{{ $req->section ?: 'No.'.$req->no }}{{ $req->account_process ? ' — '.Str::limit($req->account_process, 25) : '' }}'?"
+                                                    class="text-red-600 hover:text-red-700 text-xs font-medium">Hapus</button>
+                                            </div>
                                         </div>
                                     </td>
                                 @endif
@@ -344,6 +395,12 @@
                     </tbody>
                 </table>
             </div>
+
+            @if ($requests instanceof \Illuminate\Pagination\AbstractPaginator && $requests->hasPages())
+                <div class="px-4 py-3 border-t border-slate-100">
+                    {{ $requests->links() }}
+                </div>
+            @endif
         </div>
     @endif
 
@@ -375,6 +432,19 @@
                             <input wire:model="section_no_input" type="text" class="form-input"
                                 placeholder="Contoh: A.1, B.2, C.3">
                             @error('section_no_input')
+                                <p class="text-red-600 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <div>
+                            <label class="form-label">PIC (Auditi)</label>
+                            <select wire:model="pic_id" class="form-input text-sm">
+                                <option value="">Semua PIC</option>
+                                @foreach ($availablePics ?? [] as $apic)
+                                    <option value="{{ $apic->id }}">{{ $apic->name }} ({{ $apic->email }})
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('pic_id')
                                 <p class="text-red-600 text-xs mt-1">{{ $message }}</p>
                             @enderror
                         </div>

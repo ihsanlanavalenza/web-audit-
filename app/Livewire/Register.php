@@ -2,9 +2,12 @@
 
 namespace App\Livewire;
 
+use App\Models\Invitation;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 class Register extends Component
@@ -13,15 +16,18 @@ class Register extends Component
     public string $email = '';
     public string $password = '';
     public string $password_confirmation = '';
-    public string $role = 'auditor';
+    public string $role = 'auditi';
     public string $invitation_token = '';
 
     public function mount()
     {
         if (request()->has('token')) {
-            $this->invitation_token = request()->get('token');
-            $invitation = \App\Models\Invitation::where('token', $this->invitation_token)
+            $this->invitation_token = (string) request()->input('token');
+            $invitation = Invitation::where('token', $this->invitation_token)
                 ->whereNull('accepted_at')
+                ->where(function ($q) {
+                    $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                })
                 ->first();
             if ($invitation) {
                 $this->email = $invitation->email;
@@ -36,42 +42,51 @@ class Register extends Component
             'name' => 'required|min:3|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|min:8|confirmed',
-            'role' => 'required|in:auditor,auditi',  // super_admin tidak bisa via registrasi publik
+            'role' => ['required', Rule::in(['auditi'])],
         ]);
+
+        $invitation = null;
+        if ($this->invitation_token) {
+            $invitation = Invitation::where('token', $this->invitation_token)
+                ->whereNull('accepted_at')
+                ->where(function ($q) {
+                    $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                })
+                ->first();
+
+            if (!$invitation) {
+                $this->addError('invitation_token', 'Token undangan tidak valid atau sudah kadaluarsa.');
+                return;
+            }
+
+            if (strcasecmp($invitation->email, $this->email) !== 0) {
+                $this->addError('email', 'Email harus sama dengan email pada undangan.');
+                return;
+            }
+        }
 
         $user = User::create([
             'name' => $this->name,
             'email' => $this->email,
             'password' => Hash::make($this->password),
-            'role' => $this->role,
+            'role' => $invitation?->role ?? 'auditi',
+            'kap_id' => $invitation?->kap_id,
             'invitation_token' => $this->invitation_token ?: null,
         ]);
 
         // Accept invitation if exists
-        if ($this->invitation_token) {
-            $invitation = \App\Models\Invitation::where('token', $this->invitation_token)
-                ->whereNull('accepted_at')
-                ->first();
-            if ($invitation) {
-                $invitation->update(['accepted_at' => now()]);
-                if ($invitation->role === 'auditi' && $invitation->client_id) {
-                    $user->update(['kap_id' => $invitation->kap_id]);
-                }
-            }
+        if ($invitation) {
+            $invitation->update(['accepted_at' => now()]);
         }
 
         Auth::login($user);
 
-        if ($user->isAuditor()) {
-            return redirect()->route('kap-profile');
-        }
-
         return redirect()->route('dashboard');
     }
 
+    #[Layout('layouts.guest')]
     public function render()
     {
-        return view('livewire.register')
-            ->layout('layouts.guest');
+        return view('livewire.register');
     }
 }

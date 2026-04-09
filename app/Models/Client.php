@@ -21,7 +21,7 @@ class Client extends Model
     protected function casts(): array
     {
         return [
-            'tahun_audit' => 'date',
+            'tahun_audit' => 'integer',
         ];
     }
 

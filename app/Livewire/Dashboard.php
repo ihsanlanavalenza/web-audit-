@@ -2,21 +2,33 @@
 
 namespace App\Livewire;
 
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 class Dashboard extends Component
 {
     public function mount()
     {
+        /** @var User|null $user */
+        $user = Auth::user();
+
         // Super Admin → redirect ke admin dashboard
-        if (auth()->user()->isSuperAdmin()) {
+        if ($user && $user->isSuperAdmin()) {
             return $this->redirect(route('admin.dashboard'), navigate: false);
         }
     }
 
+    #[Layout('layouts.app')]
     public function render()
     {
-        $user = auth()->user();
+        /** @var User|null $user */
+        $user = Auth::user();
+        if (!$user) {
+            abort(403);
+        }
+
         $data = [];
 
         if ($user->isAuditor()) {
@@ -43,8 +55,7 @@ class Dashboard extends Component
             ];
         }
 
-        return view('livewire.dashboard', $data)
-            ->layout('layouts.app', ['title' => 'Dashboard']);
+        return view('livewire.dashboard', $data);
     }
 }
 
