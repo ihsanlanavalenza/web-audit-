@@ -16,6 +16,7 @@ For remote GitHub deployment setup, see [GITHUB_REMOTE_DEPLOY.md](GITHUB_REMOTE_
 
 Set production values in server environment:
 
+- `PHP >= 8.4` (pastikan versi domain di cPanel sudah 8.4)
 - `APP_ENV=production`
 - `APP_DEBUG=false`
 - `APP_URL=https://your-domain.com`
