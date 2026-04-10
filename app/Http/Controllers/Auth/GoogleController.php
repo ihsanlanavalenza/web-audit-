@@ -25,11 +25,6 @@ class GoogleController extends Controller
 
     public function callback(Request $request)
     {
-        if (!$this->hasGoogleOauthConfig()) {
-            return redirect()->route('login')
-                ->with('error', 'Konfigurasi Google Login belum lengkap. Hubungi admin sistem.');
-        }
-
         if ($request->filled('error')) {
             $error = strtolower((string) $request->query('error'));
             $message = $error === 'access_denied'
@@ -37,6 +32,11 @@ class GoogleController extends Controller
                 : 'Login Google gagal diproses. Coba lagi.';
 
             return redirect()->route('login')->with('error', $message);
+        }
+
+        if (!$this->hasGoogleOauthConfig()) {
+            return redirect()->route('login')
+                ->with('error', 'Konfigurasi Google Login belum lengkap. Hubungi admin sistem.');
         }
 
         try {
