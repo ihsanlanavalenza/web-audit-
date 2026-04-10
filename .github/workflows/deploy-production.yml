@@ -96,7 +96,20 @@ jobs:
           name: release-package
           path: release/
 
-      - name: Deploy to cPanel via FTP
+      - name: Preflight FTP Connectivity
+        run: |
+          host="${{ secrets.CPANEL_FTP_SERVER }}"
+          for port in 21 22 990; do
+            if timeout 5 bash -c "cat < /dev/null > /dev/tcp/${host}/${port}" 2>/dev/null; then
+              echo "Port ${port}: OPEN"
+            else
+              echo "Port ${port}: CLOSED or REFUSED"
+            fi
+          done
+
+      - name: Deploy to cPanel (Primary Settings)
+        id: deploy_primary
+        continue-on-error: true
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.CPANEL_FTP_SERVER }}
@@ -108,3 +121,41 @@ jobs:
           server-dir: ${{ endsWith(secrets.CPANEL_TARGET_DIR, '/') && secrets.CPANEL_TARGET_DIR || format('{0}/', secrets.CPANEL_TARGET_DIR) }}
           log-level: standard
           dangerous-clean-slate: false
+
+      - name: Deploy Fallback (FTPS on 21)
+        id: deploy_fallback_ftps21
+        if: steps.deploy_primary.outcome == 'failure'
+        continue-on-error: true
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.CPANEL_FTP_SERVER }}
+          username: ${{ secrets.CPANEL_FTP_USERNAME }}
+          password: ${{ secrets.CPANEL_FTP_PASSWORD }}
+          port: 21
+          protocol: ftps
+          local-dir: release/
+          server-dir: ${{ endsWith(secrets.CPANEL_TARGET_DIR, '/') && secrets.CPANEL_TARGET_DIR || format('{0}/', secrets.CPANEL_TARGET_DIR) }}
+          log-level: standard
+          dangerous-clean-slate: false
+
+      - name: Deploy Fallback (FTPS Legacy on 990)
+        id: deploy_fallback_ftps990
+        if: steps.deploy_primary.outcome == 'failure' && steps.deploy_fallback_ftps21.outcome == 'failure'
+        continue-on-error: true
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.CPANEL_FTP_SERVER }}
+          username: ${{ secrets.CPANEL_FTP_USERNAME }}
+          password: ${{ secrets.CPANEL_FTP_PASSWORD }}
+          port: 990
+          protocol: ftps-legacy
+          local-dir: release/
+          server-dir: ${{ endsWith(secrets.CPANEL_TARGET_DIR, '/') && secrets.CPANEL_TARGET_DIR || format('{0}/', secrets.CPANEL_TARGET_DIR) }}
+          log-level: standard
+          dangerous-clean-slate: false
+
+      - name: Fail When All Deploy Attempts Failed
+        if: steps.deploy_primary.outcome == 'failure' && (steps.deploy_fallback_ftps21.outcome == 'failure' || steps.deploy_fallback_ftps21.outcome == 'skipped') && (steps.deploy_fallback_ftps990.outcome == 'failure' || steps.deploy_fallback_ftps990.outcome == 'skipped')
+        run: |
+          echo "All deployment attempts failed. Check CPANEL_FTP_SERVER, CPANEL_FTP_PORT, CPANEL_FTP_PROTOCOL, and FTP service status in cPanel."
+          exit 1

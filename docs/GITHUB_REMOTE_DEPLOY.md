@@ -80,6 +80,8 @@ Catatan:
 
 - Workflow sudah otomatis menjalankan `npm run build`.
 - Workflow deploy tidak mengirim folder `docs` dan file markdown (`*.md`).
+- Workflow deploy akan mencoba fallback koneksi otomatis: `ftp/secret-port` -> `ftps:21` -> `ftps-legacy:990`.
+- Log workflow menampilkan preflight status port `21`, `22`, dan `990` untuk bantu diagnosis koneksi.
 - Jika error `ECONNREFUSED` pada step FTP, cek ulang kombinasi `CPANEL_FTP_SERVER`, `CPANEL_FTP_PORT`, dan `CPANEL_FTP_PROTOCOL` dari cPanel FTP Accounts.
 
 ## 4) First Deploy Verification di cPanel
