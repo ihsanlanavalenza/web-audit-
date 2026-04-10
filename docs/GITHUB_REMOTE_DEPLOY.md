@@ -71,6 +71,7 @@ Tambahkan ini satu per satu:
   - biasanya `21`
 5. `CPANEL_TARGET_DIR`
   - gunakan `/home/auditinm/web-audit-system-/`
+  - pastikan target direktori folder (akhiri dengan `/`)
 
 Catatan:
 

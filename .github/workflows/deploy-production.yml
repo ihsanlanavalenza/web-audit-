@@ -104,5 +104,5 @@ jobs:
           password: ${{ secrets.CPANEL_FTP_PASSWORD }}
           port: ${{ secrets.CPANEL_FTP_PORT }}
           local-dir: release/
-          server-dir: ${{ secrets.CPANEL_TARGET_DIR }}
+          server-dir: ${{ endsWith(secrets.CPANEL_TARGET_DIR, '/') && secrets.CPANEL_TARGET_DIR || format('{0}/', secrets.CPANEL_TARGET_DIR) }}
           dangerous-clean-slate: false
