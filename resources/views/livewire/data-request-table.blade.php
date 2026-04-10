@@ -71,9 +71,10 @@
                     </thead>
                     <tbody>
                         @php
-                            $items = $requests instanceof \Illuminate\Pagination\AbstractPaginator
-                                ? collect($requests->items())
-                                : collect($requests);
+                            $items =
+                                $requests instanceof \Illuminate\Pagination\AbstractPaginator
+                                    ? collect($requests->items())
+                                    : collect($requests);
                             $sectionCodeSpans = [];
                             $sectionNoSpans = [];
                             $accountSpans = [];
@@ -240,9 +241,9 @@
                                                     class="mt-3 pt-3 border-t border-slate-200">
                                                     <input type="file" wire:model="uploadFiles" multiple
                                                         x-on:livewire-upload-start="uploading = true"
-                                                        x-on:livewire-upload-finish="uploading = false" class="hidden"
-                                                        id="file-add-{{ $req->id }}"
-                                                        x-on:change="$wire.uploadFilesForRow({{ $req->id }})">
+                                                        x-on:livewire-upload-finish="uploading = false; $wire.uploadFilesForRow({{ $req->id }})"
+                                                        x-on:livewire-upload-error="uploading = false" class="hidden"
+                                                        id="file-add-{{ $req->id }}">
                                                     <label for="file-add-{{ $req->id }}"
                                                         class="cursor-pointer inline-flex flex-wrap justify-center items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition font-medium w-full">
                                                         <svg class="w-3 h-3" fill="none" stroke="currentColor"
@@ -269,9 +270,9 @@
                                                     </div>
                                                     <input type="file" wire:model="uploadFiles" multiple
                                                         x-on:livewire-upload-start="uploading = true"
-                                                        x-on:livewire-upload-finish="uploading = false" class="hidden"
-                                                        id="file-{{ $req->id }}"
-                                                        x-on:change="$wire.uploadFilesForRow({{ $req->id }})">
+                                                        x-on:livewire-upload-finish="uploading = false; $wire.uploadFilesForRow({{ $req->id }})"
+                                                        x-on:livewire-upload-error="uploading = false" class="hidden"
+                                                        id="file-{{ $req->id }}">
                                                     <label for="file-{{ $req->id }}"
                                                         class="cursor-pointer flex justify-center items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition font-medium w-full">
                                                         <svg class="w-3 h-3" fill="none" stroke="currentColor"
@@ -384,7 +385,7 @@
                                                 <button wire:click="editRow({{ $req->id }})"
                                                     class="text-blue-600 hover:text-blue-700 text-xs font-medium">Edit</button>
                                                 <button wire:click="deleteRow({{ $req->id }})"
-                                                    wire:confirm="Yakin hapus Data Request '{{ $req->section ?: 'No.'.$req->no }}{{ $req->account_process ? ' — '.Str::limit($req->account_process, 25) : '' }}'?"
+                                                    wire:confirm="Yakin hapus Data Request '{{ $req->section ?: 'No.' . $req->no }}{{ $req->account_process ? ' — ' . Str::limit($req->account_process, 25) : '' }}'?"
                                                     class="text-red-600 hover:text-red-700 text-xs font-medium">Hapus</button>
                                             </div>
                                         </div>

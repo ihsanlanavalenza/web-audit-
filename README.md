@@ -58,3 +58,9 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
 # web-audit-
+
+## Deployment
+
+See the production runbook in [docs/PRODUCTION_CHECKLIST.md](docs/PRODUCTION_CHECKLIST.md).
+
+For GitHub-to-server remote deployment, follow [docs/GITHUB_REMOTE_DEPLOY.md](docs/GITHUB_REMOTE_DEPLOY.md).

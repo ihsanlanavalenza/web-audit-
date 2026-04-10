@@ -12,16 +12,34 @@ class DataRequestRevisionNotification extends Notification implements ShouldQueu
 {
     use Queueable;
 
+    public int $tries = 5;
+    public int $timeout = 120;
+    public int $maxExceptions = 3;
+
     public DataRequest $dataRequest;
 
     public function __construct(DataRequest $dataRequest)
     {
         $this->dataRequest = $dataRequest;
+        $this->afterCommit();
     }
 
     public function via(object $notifiable): array
     {
         return ['mail', 'database'];
+    }
+
+    public function viaQueues(): array
+    {
+        return [
+            'mail' => 'mail',
+            'database' => 'default',
+        ];
+    }
+
+    public function backoff(): array
+    {
+        return [60, 180, 600];
     }
 
     public function toMail(object $notifiable): MailMessage

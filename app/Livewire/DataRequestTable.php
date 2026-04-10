@@ -7,6 +7,7 @@ use App\Models\Client;
 use App\Models\User;
 use App\Models\KapProfile;
 use App\Models\Invitation;
+use App\Notifications\DataRequestFileUploadedNotification;
 use App\Notifications\DataRequestRevisionNotification;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Notification;
@@ -187,8 +188,17 @@ class DataRequestTable extends Component
         $this->authorizeClientAccess();
 
         $this->validate([
-            'uploadFiles.*' => 'required|file|max:10240'
+            'uploadFiles' => 'required|array|min:1',
+            'uploadFiles.*' => 'required|file|max:10240',
         ]);
+
+        $files = is_array($this->uploadFiles) ? $this->uploadFiles : [$this->uploadFiles];
+        $files = array_values(array_filter($files));
+
+        if (count($files) === 0) {
+            session()->flash('error', 'Tidak ada file yang dipilih untuk diunggah.');
+            return;
+        }
 
         $row = $this->getQuery()->findOrFail($id);
 
@@ -218,7 +228,7 @@ class DataRequestTable extends Component
         $nextVersionNumber = count($currentInputFiles) + 1;
 
         $newPaths = [];
-        foreach ($this->uploadFiles as $file) {
+        foreach ($files as $file) {
             $newPaths[] = $file->store("uploads/{$this->clientId}", 'public');
         }
 
@@ -235,31 +245,13 @@ class DataRequestTable extends Component
             'date_input' => now(), // track latest action time
         ]);
 
+        $row->refresh();
+
         // Trigger Notification ke Auditor -> bahwa ada unggahan revisi/dokumen baru
         if ($row->kap_id) {
             $auditors = User::where('id', KapProfile::where('id', $row->kap_id)->value('user_id'))->get();
 
-            foreach ($auditors as $auditor) {
-                // Buat notifikasi singkat menggunakan Notification facade
-                Notification::send($auditor, new class($row) extends \Illuminate\Notifications\Notification {
-                    public $req;
-                    public function __construct($req)
-                    {
-                        $this->req = $req;
-                    }
-                    public function via($notifiable)
-                    {
-                        return ['database'];
-                    }
-                    public function toArray($notifiable)
-                    {
-                        return [
-                            'message' => "Auditi mengunggah dokumen (v" . count($this->req->input_file) . ") pada Data Request " . $this->req->section,
-                            'data_request_id' => $this->req->id
-                        ];
-                    }
-                });
-            }
+            Notification::send($auditors, new DataRequestFileUploadedNotification($row));
         }
 
         $this->uploadFiles = [];
