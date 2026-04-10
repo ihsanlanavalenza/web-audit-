@@ -27,6 +27,28 @@ Di cPanel File Manager, siapkan folder aplikasi (contoh):
 
 Siapkan file `.env` production langsung di server (jangan di git).
 
+Contoh `.env` minimum untuk koneksi DB production:
+
+```env
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://your-domain.com
+
+DB_CONNECTION=mysql
+DB_HOST=localhost
+DB_PORT=3306
+DB_DATABASE=auditinm_webaudit
+DB_USERNAME=auditinm_dbuser
+DB_PASSWORD=isi-password-db-di-server
+
+QUEUE_CONNECTION=database
+```
+
+Catatan keamanan:
+
+- Jangan commit password DB ke repository.
+- Karena password sempat dibagikan di chat, sebaiknya rotate password DB setelah setup final selesai.
+
 ## 3) Setup GitHub Actions Secrets (satu per satu)
 
 Masuk ke GitHub repository:
@@ -71,6 +93,12 @@ php artisan storage:link
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
+```
+
+Opsional untuk validasi koneksi DB:
+
+```bash
+php artisan migrate:status
 ```
 
 ## 5) Queue Worker di Shared Hosting (tanpa Supervisor)

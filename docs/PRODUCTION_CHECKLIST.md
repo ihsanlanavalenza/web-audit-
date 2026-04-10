@@ -19,6 +19,12 @@ Set production values in server environment:
 - `APP_ENV=production`
 - `APP_DEBUG=false`
 - `APP_URL=https://your-domain.com`
+- `DB_CONNECTION=mysql`
+- `DB_HOST=localhost`
+- `DB_PORT=3306`
+- `DB_DATABASE=auditinm_webaudit`
+- `DB_USERNAME=auditinm_dbuser`
+- `DB_PASSWORD=<set-on-server-only>`
 - `MAIL_MAILER=smtp`
 - `QUEUE_CONNECTION=database` (or redis)
 
