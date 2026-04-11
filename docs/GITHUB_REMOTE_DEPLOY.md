@@ -11,7 +11,7 @@ Target implementasi saat ini:
 ## 1) Prasyarat
 
 - Akun cPanel aktif.
-- PHP di hosting minimal `8.4` (wajib, mengikuti `composer.lock` saat ini).
+- PHP di hosting minimal `8.2`.
 - SSH akses untuk user cPanel aktif (port `22`).
 - Repo source code sudah ada di GitHub.
 - Domain production sudah aktif.
