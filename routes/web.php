@@ -27,11 +27,41 @@ Route::get('/__diag/logs', function () {
         'queue_default' => (string) config('queue.default'),
     ];
 
+    $envPath = base_path('.env');
+    $envPairs = [
+        'APP_KEY' => '(missing)',
+        'DB_CONNECTION' => '(missing)',
+        'SESSION_DRIVER' => '(missing)',
+        'CACHE_STORE' => '(missing)',
+        'QUEUE_CONNECTION' => '(missing)',
+    ];
+
+    if (is_file($envPath) && is_readable($envPath)) {
+        $envLines = @file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+        foreach ($envLines as $line) {
+            if (str_starts_with($line, '#') || !str_contains($line, '=')) {
+                continue;
+            }
+
+            [$k, $v] = array_pad(explode('=', $line, 2), 2, '');
+            if (array_key_exists($k, $envPairs)) {
+                $envPairs[$k] = $v;
+            }
+        }
+    }
+
     $logPath = storage_path('logs/laravel.log');
     if (!is_file($logPath)) {
         $info = "Diagnostics:\n";
         foreach ($report as $key => $value) {
             $info .= "{$key}={$value}\n";
+        }
+
+        foreach ($envPairs as $key => $value) {
+            if ($key === 'APP_KEY') {
+                $value = $value === '' ? '(empty)' : ('len='.strlen($value));
+            }
+            $info .= "env_{$key}={$value}\n";
         }
 
         return response($info."\nLog file not found: {$logPath}\n", 404, ['Content-Type' => 'text/plain; charset=utf-8']);
@@ -44,6 +74,13 @@ Route::get('/__diag/logs', function () {
             $info .= "{$key}={$value}\n";
         }
 
+        foreach ($envPairs as $key => $value) {
+            if ($key === 'APP_KEY') {
+                $value = $value === '' ? '(empty)' : ('len='.strlen($value));
+            }
+            $info .= "env_{$key}={$value}\n";
+        }
+
         return response($info."\nUnable to read log file: {$logPath}\n", 500, ['Content-Type' => 'text/plain; charset=utf-8']);
     }
 
@@ -51,6 +88,13 @@ Route::get('/__diag/logs', function () {
     $info = "Diagnostics:\n";
     foreach ($report as $key => $value) {
         $info .= "{$key}={$value}\n";
+    }
+
+    foreach ($envPairs as $key => $value) {
+        if ($key === 'APP_KEY') {
+            $value = $value === '' ? '(empty)' : ('len='.strlen($value));
+        }
+        $info .= "env_{$key}={$value}\n";
     }
 
     return response($info."\n--- laravel.log (tail) ---\n".$tail, 200, ['Content-Type' => 'text/plain; charset=utf-8']);
