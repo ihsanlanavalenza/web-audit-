@@ -51,13 +51,21 @@ Route::get('/__diag/logs', function () {
     }
 
     if (request('repair') === '1') {
-        if (!is_file($envPath) || !is_readable($envPath)) {
-            return response("repair=false\nreason=env_not_readable\npath={$envPath}\n", 500, ['Content-Type' => 'text/plain; charset=utf-8']);
-        }
-
-        $content = file_get_contents($envPath);
-        if ($content === false) {
-            return response("repair=false\nreason=env_read_failed\n", 500, ['Content-Type' => 'text/plain; charset=utf-8']);
+        $content = '';
+        if (is_file($envPath) && is_readable($envPath)) {
+            $readContent = file_get_contents($envPath);
+            if ($readContent === false) {
+                return response("repair=false\nreason=env_read_failed\n", 500, ['Content-Type' => 'text/plain; charset=utf-8']);
+            }
+            $content = $readContent;
+        } else {
+            $envExamplePath = base_path('.env.example');
+            if (is_file($envExamplePath) && is_readable($envExamplePath)) {
+                $exampleContent = file_get_contents($envExamplePath);
+                if ($exampleContent !== false) {
+                    $content = $exampleContent;
+                }
+            }
         }
 
         $setEnv = static function (string $key, string $value, string $buffer): string {
@@ -104,7 +112,11 @@ Route::get('/__diag/logs', function () {
 
         foreach ($envPairs as $key => $value) {
             if ($key === 'APP_KEY') {
-                $value = $value === '' ? '(empty)' : ('len='.strlen($value));
+                if ($value === '(missing)') {
+                    $value = '(missing)';
+                } else {
+                    $value = $value === '' ? '(empty)' : ('len='.strlen($value));
+                }
             }
             $info .= "env_{$key}={$value}\n";
         }
@@ -121,7 +133,11 @@ Route::get('/__diag/logs', function () {
 
         foreach ($envPairs as $key => $value) {
             if ($key === 'APP_KEY') {
-                $value = $value === '' ? '(empty)' : ('len='.strlen($value));
+                if ($value === '(missing)') {
+                    $value = '(missing)';
+                } else {
+                    $value = $value === '' ? '(empty)' : ('len='.strlen($value));
+                }
             }
             $info .= "env_{$key}={$value}\n";
         }
@@ -137,7 +153,11 @@ Route::get('/__diag/logs', function () {
 
     foreach ($envPairs as $key => $value) {
         if ($key === 'APP_KEY') {
-            $value = $value === '' ? '(empty)' : ('len='.strlen($value));
+            if ($value === '(missing)') {
+                $value = '(missing)';
+            } else {
+                $value = $value === '' ? '(empty)' : ('len='.strlen($value));
+            }
         }
         $info .= "env_{$key}={$value}\n";
     }
