@@ -44,7 +44,8 @@
                         <div
                             class="rounded-xl border border-slate-200 p-3 transition-all peer-checked:border-red-500 peer-checked:bg-red-50 peer-checked:ring-2 peer-checked:ring-red-200">
                             <p class="font-semibold text-slate-900 text-sm">Auditi</p>
-                            <p class="text-xs text-slate-500 mt-1">Upload dokumen dan tindak lanjut permintaan audit.</p>
+                            <p class="text-xs text-slate-500 mt-1">Upload dokumen dan tindak lanjut permintaan audit.
+                            </p>
                         </div>
                     </label>
                 </div>
