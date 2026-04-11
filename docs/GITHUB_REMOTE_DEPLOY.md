@@ -62,7 +62,9 @@ Masuk ke GitHub repository:
 Tambahkan ini satu per satu:
 
 1. `CPANEL_FTP_SERVER`
-  - isi host server cPanel (IP/host untuk SSH)
+  - isi host server cPanel (IP/hostname untuk SSH)
+  - contoh benar: `67.220.67.17`
+  - jangan isi dengan URL panel seperti `http://...:2083/`
 2. `CPANEL_FTP_USERNAME`
   - isi username cPanel
 3. `CPANEL_FTP_PASSWORD`

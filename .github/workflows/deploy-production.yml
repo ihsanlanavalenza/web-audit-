@@ -101,10 +101,28 @@ jobs:
           name: release-package
           path: release/
 
+      - name: Normalize cPanel Host
+        id: normalize_host
+        run: |
+          raw_host='${{ secrets.CPANEL_FTP_SERVER }}'
+          raw_host="${raw_host#http://}"
+          raw_host="${raw_host#https://}"
+          raw_host="${raw_host#ftp://}"
+          raw_host="${raw_host#ftps://}"
+          raw_host="${raw_host%%/*}"
+          raw_host="${raw_host%%:*}"
+
+          if [ -z "$raw_host" ]; then
+            echo "CPANEL_FTP_SERVER tidak valid. Isi dengan host/IP tanpa protocol." >&2
+            exit 1
+          fi
+
+          echo "host=$raw_host" >> "$GITHUB_OUTPUT"
+
       - name: Upload Release via SCP
         uses: appleboy/scp-action@v1
         with:
-          host: ${{ secrets.CPANEL_FTP_SERVER }}
+          host: ${{ steps.normalize_host.outputs.host }}
           username: ${{ secrets.CPANEL_FTP_USERNAME }}
           password: ${{ secrets.CPANEL_FTP_PASSWORD }}
           port: ${{ env.CPANEL_SSH_PORT }}
@@ -116,7 +134,7 @@ jobs:
       - name: Activate Release and Publish Web Root
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.CPANEL_FTP_SERVER }}
+          host: ${{ steps.normalize_host.outputs.host }}
           username: ${{ secrets.CPANEL_FTP_USERNAME }}
           password: ${{ secrets.CPANEL_FTP_PASSWORD }}
           port: ${{ env.CPANEL_SSH_PORT }}
@@ -135,6 +153,18 @@ jobs:
 
             mkdir -p "$APP_DIR"
             mkdir -p "$WEB_ROOT"
+            mkdir -p "$APP_DIR/storage/app/public"
+            mkdir -p "$APP_DIR/storage/framework/cache/data"
+            mkdir -p "$APP_DIR/storage/framework/sessions"
+            mkdir -p "$APP_DIR/storage/framework/testing"
+            mkdir -p "$APP_DIR/storage/framework/views"
+            mkdir -p "$APP_DIR/storage/logs"
+            mkdir -p "$APP_DIR/bootstrap/cache"
+            chmod -R ug+rwX "$APP_DIR/storage" "$APP_DIR/bootstrap/cache" || true
+
+            if [ ! -f "$APP_DIR/.env" ] && [ -f "$APP_DIR/.env.example" ]; then
+              cp "$APP_DIR/.env.example" "$APP_DIR/.env"
+            fi
 
             if [ -d "$APP_DIR/public" ]; then
               if command -v rsync >/dev/null 2>&1; then
@@ -186,6 +216,7 @@ jobs:
 
             if [ -f "${APP_DIR}/.env" ]; then
               cd "$APP_DIR"
+              "$PHP_BIN" artisan key:generate --force || true
               "$PHP_BIN" artisan migrate --force || true
               "$PHP_BIN" artisan optimize:clear || true
               "$PHP_BIN" artisan config:cache || true
