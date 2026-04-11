@@ -110,13 +110,21 @@ Route::get('/__diag/fix-key', function () {
     abort_unless(request('k') === 'diag-web-audit-500', 404);
 
     $envPath = base_path('.env');
-    if (!is_file($envPath) || !is_readable($envPath)) {
-        return response("Cannot access readable .env at {$envPath}\n", 500, ['Content-Type' => 'text/plain; charset=utf-8']);
-    }
-
     $envDir = dirname($envPath);
-    if (!is_dir($envDir) || !is_writable($envDir)) {
-        return response("Cannot write to env directory at {$envDir}\n", 500, ['Content-Type' => 'text/plain; charset=utf-8']);
+    $envExists = is_file($envPath);
+    $envReadable = is_readable($envPath);
+    $envDirExists = is_dir($envDir);
+    $envDirWritable = is_writable($envDir);
+
+    if (!$envExists || !$envReadable || !$envDirExists || !$envDirWritable) {
+        $detail = "env_exists=".($envExists ? 'true' : 'false')."\n"
+            ."env_readable=".($envReadable ? 'true' : 'false')."\n"
+            ."env_dir_exists=".($envDirExists ? 'true' : 'false')."\n"
+            ."env_dir_writable=".($envDirWritable ? 'true' : 'false')."\n"
+            ."env_path={$envPath}\n"
+            ."env_dir={$envDir}\n";
+
+        return response($detail, 500, ['Content-Type' => 'text/plain; charset=utf-8']);
     }
 
     $content = file_get_contents($envPath);
