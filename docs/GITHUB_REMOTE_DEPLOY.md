@@ -1,6 +1,6 @@
 # GitHub Remote Deploy Guide
 
-Panduan ini untuk deploy production dari GitHub ke shared hosting cPanel menggunakan GitHub Actions + FTP.
+Panduan ini untuk deploy production dari GitHub ke shared hosting cPanel menggunakan GitHub Actions + SSH/SCP.
 
 Target implementasi saat ini:
 
@@ -12,11 +12,11 @@ Target implementasi saat ini:
 
 - Akun cPanel aktif.
 - PHP di hosting minimal `8.4` (wajib, mengikuti `composer.lock` saat ini).
-- FTP/SFTP credentials dari cPanel.
+- SSH akses untuk user cPanel aktif (port `22`).
 - Repo source code sudah ada di GitHub.
 - Domain production sudah aktif.
 - File `.env` production hanya ada di server.
-- Di cPanel, document root domain diarahkan ke folder `public` milik aplikasi Laravel.
+- Domain menunjuk ke folder web root (`public_html`) dan akan diisi otomatis dari folder `public` Laravel saat deploy.
 
 ## 2) One-Time Setup di Server
 
@@ -62,36 +62,34 @@ Masuk ke GitHub repository:
 Tambahkan ini satu per satu:
 
 1. `CPANEL_FTP_SERVER`
-  - isi host FTP dari cPanel (contoh `ftp.domainanda.com`)
+  - isi host server cPanel (IP/host untuk SSH)
 2. `CPANEL_FTP_USERNAME`
-  - isi username FTP
+  - isi username cPanel
 3. `CPANEL_FTP_PASSWORD`
-  - isi password FTP
-4. `CPANEL_FTP_PORT`
-  - biasanya `21`
-5. `CPANEL_FTP_PROTOCOL` (opsional)
-  - isi `ftp` (default) atau `ftps` sesuai setting hosting
-  - jika hosting mewajibkan FTPS, gunakan `ftps`
+  - isi password cPanel
+4. `CPANEL_SSH_PORT` (opsional)
+  - default `22`
+5. `CPANEL_APP_DIR` (opsional)
+  - default otomatis: `/home/<username>/web-audit-system-/`
+  - contoh: `/home/auditinm/web-audit-system-/`
 6. `CPANEL_TARGET_DIR`
-  - gunakan `/home/auditinm/web-audit-system-/`
-  - pastikan target direktori folder (akhiri dengan `/`)
+  - isi web root domain, untuk kasus ini: `/home/auditinm/public_html/`
 
 Catatan:
 
 - Workflow sudah otomatis menjalankan `npm run build`.
 - Workflow deploy tidak mengirim folder `docs` dan file markdown (`*.md`).
-- Workflow deploy akan mencoba fallback koneksi otomatis: `ftp/secret-port` -> `ftps:21` -> `ftps-legacy:990`.
-- Log workflow menampilkan preflight status port `21`, `22`, dan `990` untuk bantu diagnosis koneksi.
-- Jika error `ECONNREFUSED` pada step FTP, cek ulang kombinasi `CPANEL_FTP_SERVER`, `CPANEL_FTP_PORT`, dan `CPANEL_FTP_PROTOCOL` dari cPanel FTP Accounts.
+- Workflow mengunggah source ke `CPANEL_APP_DIR`, lalu sinkronisasi `CPANEL_APP_DIR/public` ke `CPANEL_TARGET_DIR`.
+- Nama secret tetap memakai prefix `CPANEL_FTP_*` untuk kompatibilitas workflow lama, tetapi sekarang dipakai untuk koneksi SSH/SCP.
 
 ## 4) First Deploy Verification di cPanel
 
 Setelah workflow pertama sukses, verifikasi:
 
 1. Di cPanel File Manager, cek file sudah terupload ke target folder.
-2. Pastikan folder `public/build` ada dan berisi `manifest.json`.
+2. Pastikan folder `build` ada di `public_html` dan berisi `manifest.json`.
 3. Buka domain dan pastikan halaman login normal.
-4. Cek `storage/logs/laravel.log` tidak ada fatal error baru.
+4. Cek log aplikasi di `${CPANEL_APP_DIR}/storage/logs/laravel.log` tidak ada fatal error baru.
 5. Jalankan di cPanel Terminal (jika tersedia):
 
 ```bash

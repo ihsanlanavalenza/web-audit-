@@ -84,10 +84,15 @@ jobs:
           name: release-package
           path: release/
 
-  deploy_ftp:
+  deploy_remote:
     runs-on: ubuntu-latest
     needs: validate_build_package
     if: github.ref == 'refs/heads/main'
+
+    env:
+      CPANEL_WEB_ROOT: ${{ endsWith(secrets.CPANEL_TARGET_DIR, '/') && secrets.CPANEL_TARGET_DIR || format('{0}/', secrets.CPANEL_TARGET_DIR) }}
+      CPANEL_APP_DIR: ${{ secrets.CPANEL_APP_DIR != '' && (endsWith(secrets.CPANEL_APP_DIR, '/') && secrets.CPANEL_APP_DIR || format('{0}/', secrets.CPANEL_APP_DIR)) || format('/home/{0}/web-audit-system-/', secrets.CPANEL_FTP_USERNAME) }}
+      CPANEL_SSH_PORT: ${{ secrets.CPANEL_SSH_PORT != '' && secrets.CPANEL_SSH_PORT || 22 }}
 
     steps:
       - name: Download Release Artifact
@@ -96,66 +101,71 @@ jobs:
           name: release-package
           path: release/
 
-      - name: Preflight FTP Connectivity
-        run: |
-          host="${{ secrets.CPANEL_FTP_SERVER }}"
-          for port in 21 22 990; do
-            if timeout 5 bash -c "cat < /dev/null > /dev/tcp/${host}/${port}" 2>/dev/null; then
-              echo "Port ${port}: OPEN"
-            else
-              echo "Port ${port}: CLOSED or REFUSED"
+      - name: Upload Release via SCP
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.CPANEL_FTP_SERVER }}
+          username: ${{ secrets.CPANEL_FTP_USERNAME }}
+          password: ${{ secrets.CPANEL_FTP_PASSWORD }}
+          port: ${{ env.CPANEL_SSH_PORT }}
+          source: "release/*"
+          target: ${{ env.CPANEL_APP_DIR }}
+          strip_components: 1
+          overwrite: true
+
+      - name: Activate Release and Publish Web Root
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.CPANEL_FTP_SERVER }}
+          username: ${{ secrets.CPANEL_FTP_USERNAME }}
+          password: ${{ secrets.CPANEL_FTP_PASSWORD }}
+          port: ${{ env.CPANEL_SSH_PORT }}
+          command_timeout: 30m
+          script: |
+            set -e
+
+            APP_DIR="${{ env.CPANEL_APP_DIR }}"
+            WEB_ROOT="${{ env.CPANEL_WEB_ROOT }}"
+            APP_DIR="${APP_DIR%/}"
+            WEB_ROOT="${WEB_ROOT%/}"
+
+            mkdir -p "$APP_DIR"
+            mkdir -p "$WEB_ROOT"
+
+            if [ -d "$APP_DIR/public" ]; then
+              if command -v rsync >/dev/null 2>&1; then
+                rsync -a --delete --exclude='cgi-bin/' "$APP_DIR/public/" "$WEB_ROOT/"
+              else
+                cp -a "$APP_DIR/public/." "$WEB_ROOT/"
+              fi
             fi
-          done
 
-      - name: Deploy to cPanel (Primary Settings)
-        id: deploy_primary
-        continue-on-error: true
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.CPANEL_FTP_SERVER }}
-          username: ${{ secrets.CPANEL_FTP_USERNAME }}
-          password: ${{ secrets.CPANEL_FTP_PASSWORD }}
-          port: ${{ secrets.CPANEL_FTP_PORT != '' && secrets.CPANEL_FTP_PORT || 21 }}
-          protocol: ${{ secrets.CPANEL_FTP_PROTOCOL != '' && secrets.CPANEL_FTP_PROTOCOL || 'ftp' }}
-          local-dir: release/
-          server-dir: ${{ endsWith(secrets.CPANEL_TARGET_DIR, '/') && secrets.CPANEL_TARGET_DIR || format('{0}/', secrets.CPANEL_TARGET_DIR) }}
-          log-level: standard
-          dangerous-clean-slate: false
+            cat > "$WEB_ROOT/index.php" <<PHP
+            <?php
+            use Illuminate\\Foundation\\Application;
 
-      - name: Deploy Fallback (FTPS on 21)
-        id: deploy_fallback_ftps21
-        if: steps.deploy_primary.outcome == 'failure'
-        continue-on-error: true
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.CPANEL_FTP_SERVER }}
-          username: ${{ secrets.CPANEL_FTP_USERNAME }}
-          password: ${{ secrets.CPANEL_FTP_PASSWORD }}
-          port: 21
-          protocol: ftps
-          local-dir: release/
-          server-dir: ${{ endsWith(secrets.CPANEL_TARGET_DIR, '/') && secrets.CPANEL_TARGET_DIR || format('{0}/', secrets.CPANEL_TARGET_DIR) }}
-          log-level: standard
-          dangerous-clean-slate: false
+            define('LARAVEL_START', microtime(true));
 
-      - name: Deploy Fallback (FTPS Legacy on 990)
-        id: deploy_fallback_ftps990
-        if: steps.deploy_primary.outcome == 'failure' && steps.deploy_fallback_ftps21.outcome == 'failure'
-        continue-on-error: true
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.CPANEL_FTP_SERVER }}
-          username: ${{ secrets.CPANEL_FTP_USERNAME }}
-          password: ${{ secrets.CPANEL_FTP_PASSWORD }}
-          port: 990
-          protocol: ftps-legacy
-          local-dir: release/
-          server-dir: ${{ endsWith(secrets.CPANEL_TARGET_DIR, '/') && secrets.CPANEL_TARGET_DIR || format('{0}/', secrets.CPANEL_TARGET_DIR) }}
-          log-level: standard
-          dangerous-clean-slate: false
+            if (file_exists(\$maintenance = '${APP_DIR}/storage/framework/maintenance.php')) {
+                require \$maintenance;
+            }
 
-      - name: Fail When All Deploy Attempts Failed
-        if: steps.deploy_primary.outcome == 'failure' && (steps.deploy_fallback_ftps21.outcome == 'failure' || steps.deploy_fallback_ftps21.outcome == 'skipped') && (steps.deploy_fallback_ftps990.outcome == 'failure' || steps.deploy_fallback_ftps990.outcome == 'skipped')
-        run: |
-          echo "All deployment attempts failed. Check CPANEL_FTP_SERVER, CPANEL_FTP_PORT, CPANEL_FTP_PROTOCOL, and FTP service status in cPanel."
-          exit 1
+            require '${APP_DIR}/vendor/autoload.php';
+
+            \$app = require_once '${APP_DIR}/bootstrap/app.php';
+
+            \$app->handleRequest(Illuminate\\Http\\Request::capture());
+            PHP
+
+            ln -sfn "${APP_DIR}/storage/app/public" "${WEB_ROOT}/storage"
+
+            if [ -f "${APP_DIR}/.env" ]; then
+              cd "$APP_DIR"
+              php artisan migrate --force || true
+              php artisan optimize:clear || true
+              php artisan config:cache || true
+              php artisan route:cache || true
+              php artisan view:cache || true
+            else
+              echo "WARNING: ${APP_DIR}/.env belum ada di server; lewati perintah artisan."
+            fi
