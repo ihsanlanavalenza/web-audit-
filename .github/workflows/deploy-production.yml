@@ -185,6 +185,15 @@ jobs:
               touch "$APP_DIR/database/database.sqlite"
             fi
 
+            if [ -f "$APP_DIR/.env" ] && ! grep -Eq '^APP_KEY=.+$' "$APP_DIR/.env"; then
+              APP_KEY_VALUE="$($PHP_BIN -r 'echo "base64:".base64_encode(random_bytes(32));')"
+              if grep -Eq '^APP_KEY=' "$APP_DIR/.env"; then
+                sed -i "s|^APP_KEY=.*|APP_KEY=${APP_KEY_VALUE}|" "$APP_DIR/.env"
+              else
+                echo "APP_KEY=${APP_KEY_VALUE}" >> "$APP_DIR/.env"
+              fi
+            fi
+
             if [ -d "$APP_DIR/public" ]; then
               if command -v rsync >/dev/null 2>&1; then
                 rsync -a --delete --exclude='cgi-bin/' "$APP_DIR/public/" "$WEB_ROOT/"
