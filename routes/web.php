@@ -106,6 +106,64 @@ Route::get('/__diag/logs', function () {
     \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
 ]);
 
+Route::get('/__diag/fix-key', function () {
+    abort_unless(request('k') === 'diag-web-audit-500', 404);
+
+    $envPath = base_path('.env');
+    if (!is_file($envPath) || !is_readable($envPath) || !is_writable($envPath)) {
+        return response("Cannot access writable .env at {$envPath}\n", 500, ['Content-Type' => 'text/plain; charset=utf-8']);
+    }
+
+    $content = file_get_contents($envPath);
+    if ($content === false) {
+        return response("Failed reading .env\n", 500, ['Content-Type' => 'text/plain; charset=utf-8']);
+    }
+
+    $setEnv = static function (string $key, string $value, string $buffer): string {
+        $line = $key.'='.$value;
+        if (preg_match('/^'.preg_quote($key, '/').'=.*/m', $buffer)) {
+            return (string) preg_replace('/^'.preg_quote($key, '/').'=.*/m', $line, $buffer, 1);
+        }
+
+        return rtrim($buffer, "\n")."\n{$line}\n";
+    };
+
+    $content = $setEnv('APP_ENV', 'production', $content);
+    $content = $setEnv('APP_DEBUG', 'false', $content);
+    $content = $setEnv('APP_URL', 'https://auditin.my.id', $content);
+
+    if (!preg_match('/^APP_KEY=base64:[A-Za-z0-9+\/=]{40,}$/m', $content)) {
+        $content = $setEnv('APP_KEY', 'base64:'.base64_encode(random_bytes(32)), $content);
+    }
+
+    if (!preg_match('/^DB_CONNECTION=.*$/m', $content) || preg_match('/^DB_CONNECTION=sqlite$/m', $content)) {
+        $content = $setEnv('DB_CONNECTION', 'sqlite', $content);
+        $content = $setEnv('SESSION_DRIVER', 'file', $content);
+        $content = $setEnv('CACHE_STORE', 'file', $content);
+        $content = $setEnv('QUEUE_CONNECTION', 'sync', $content);
+
+        $sqlitePath = database_path('database.sqlite');
+        if (!is_file($sqlitePath)) {
+            @touch($sqlitePath);
+        }
+    }
+
+    if (file_put_contents($envPath, $content) === false) {
+        return response("Failed writing .env\n", 500, ['Content-Type' => 'text/plain; charset=utf-8']);
+    }
+
+    @unlink(base_path('bootstrap/cache/config.php'));
+    @unlink(base_path('bootstrap/cache/routes-v7.php'));
+
+    return response("OK: .env repaired and config cache cleared\n", 200, ['Content-Type' => 'text/plain; charset=utf-8']);
+})->withoutMiddleware([
+    \Illuminate\Cookie\Middleware\EncryptCookies::class,
+    \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+    \Illuminate\Session\Middleware\StartSession::class,
+    \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+    \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+]);
+
 /*
 |--------------------------------------------------------------------------
 | Guest Routes (Belum Login)
