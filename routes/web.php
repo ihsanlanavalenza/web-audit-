@@ -110,8 +110,13 @@ Route::get('/__diag/fix-key', function () {
     abort_unless(request('k') === 'diag-web-audit-500', 404);
 
     $envPath = base_path('.env');
-    if (!is_file($envPath) || !is_readable($envPath) || !is_writable($envPath)) {
-        return response("Cannot access writable .env at {$envPath}\n", 500, ['Content-Type' => 'text/plain; charset=utf-8']);
+    if (!is_file($envPath) || !is_readable($envPath)) {
+        return response("Cannot access readable .env at {$envPath}\n", 500, ['Content-Type' => 'text/plain; charset=utf-8']);
+    }
+
+    $envDir = dirname($envPath);
+    if (!is_dir($envDir) || !is_writable($envDir)) {
+        return response("Cannot write to env directory at {$envDir}\n", 500, ['Content-Type' => 'text/plain; charset=utf-8']);
     }
 
     $content = file_get_contents($envPath);
@@ -148,8 +153,14 @@ Route::get('/__diag/fix-key', function () {
         }
     }
 
-    if (file_put_contents($envPath, $content) === false) {
-        return response("Failed writing .env\n", 500, ['Content-Type' => 'text/plain; charset=utf-8']);
+    $tmpEnv = $envPath.'.tmp.'.bin2hex(random_bytes(4));
+    if (file_put_contents($tmpEnv, $content) === false) {
+        return response("Failed writing temporary env file\n", 500, ['Content-Type' => 'text/plain; charset=utf-8']);
+    }
+
+    if (!@rename($tmpEnv, $envPath)) {
+        @unlink($tmpEnv);
+        return response("Failed replacing .env via rename\n", 500, ['Content-Type' => 'text/plain; charset=utf-8']);
     }
 
     @unlink(base_path('bootstrap/cache/config.php'));
