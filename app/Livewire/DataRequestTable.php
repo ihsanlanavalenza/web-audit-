@@ -48,6 +48,18 @@ class DataRequestTable extends Component
     // File detail expansion
     public ?int $expandedFileRow = null;
 
+    // Header filters (Excel-like)
+    public string $filterSectionNo = '';
+    public string $filterAccountProcess = '';
+    public array $filterStatuses = [];
+    public ?string $filterRequestDateFrom = null;
+    public ?string $filterRequestDateTo = null;
+    public ?string $filterExpectedReceivedFrom = null;
+    public ?string $filterExpectedReceivedTo = null;
+    public ?string $filterDateInputFrom = null;
+    public ?string $filterDateInputTo = null;
+    public string $filterInputFileState = '';
+
     public function mount(?int $clientId = null)
     {
         $this->clientId = $clientId;
@@ -86,7 +98,22 @@ class DataRequestTable extends Component
     public function updatedClientId(): void
     {
         $this->authorizeClientAccess();
+        $this->resetFilters();
         $this->loadPics();
+    }
+
+    public function resetFilters(): void
+    {
+        $this->filterSectionNo = '';
+        $this->filterAccountProcess = '';
+        $this->filterStatuses = [];
+        $this->filterRequestDateFrom = null;
+        $this->filterRequestDateTo = null;
+        $this->filterExpectedReceivedFrom = null;
+        $this->filterExpectedReceivedTo = null;
+        $this->filterDateInputFrom = null;
+        $this->filterDateInputTo = null;
+        $this->filterInputFileState = '';
     }
 
     public function openAddModal()
@@ -336,7 +363,66 @@ class DataRequestTable extends Component
 
     private function getQuery()
     {
-        return DataRequest::query()->where('client_id', $this->clientId);
+        $query = DataRequest::query()->where('client_id', $this->clientId);
+
+        $sectionNo = trim($this->filterSectionNo);
+        if ($sectionNo !== '') {
+            $query->where(function (Builder $q) use ($sectionNo) {
+                $q->where('section_code', 'like', '%' . $sectionNo . '%')
+                    ->orWhere('section_no', 'like', '%' . $sectionNo . '%');
+            });
+        }
+
+        $accountProcess = trim($this->filterAccountProcess);
+        if ($accountProcess !== '') {
+            $query->where('account_process', 'like', '%' . $accountProcess . '%');
+        }
+
+        $allowedStatuses = array_keys(DataRequest::STATUSES);
+        $statusFilters = array_values(array_intersect($this->filterStatuses, $allowedStatuses));
+        if (!empty($statusFilters)) {
+            $query->whereIn('status', $statusFilters);
+        }
+
+        if ($this->filterRequestDateFrom) {
+            $query->whereDate('request_date', '>=', $this->filterRequestDateFrom);
+        }
+
+        if ($this->filterRequestDateTo) {
+            $query->whereDate('request_date', '<=', $this->filterRequestDateTo);
+        }
+
+        if ($this->filterExpectedReceivedFrom) {
+            $query->whereDate('expected_received', '>=', $this->filterExpectedReceivedFrom);
+        }
+
+        if ($this->filterExpectedReceivedTo) {
+            $query->whereDate('expected_received', '<=', $this->filterExpectedReceivedTo);
+        }
+
+        if ($this->filterDateInputFrom) {
+            $query->whereDate('date_input', '>=', $this->filterDateInputFrom);
+        }
+
+        if ($this->filterDateInputTo) {
+            $query->whereDate('date_input', '<=', $this->filterDateInputTo);
+        }
+
+        if ($this->filterInputFileState === 'uploaded') {
+            $query->whereNotNull('input_file')
+                ->where('input_file', '!=', '[]')
+                ->where('input_file', '!=', '')
+                ->where('input_file', '!=', 'null');
+        } elseif ($this->filterInputFileState === 'not_uploaded') {
+            $query->where(function (Builder $q) {
+                $q->whereNull('input_file')
+                    ->orWhere('input_file', '[]')
+                    ->orWhere('input_file', '')
+                    ->orWhere('input_file', 'null');
+            });
+        }
+
+        return $query;
     }
 
     private function authorizeClientAccess(): void
@@ -400,7 +486,11 @@ class DataRequestTable extends Component
     public function exportCsv()
     {
         $this->authorizeClientAccess();
-        $requests = $this->getQuery()->get();
+        $requests = $this->getQuery()
+            ->orderBy('section_code')
+            ->orderBy('section_no')
+            ->orderBy('no')
+            ->get();
 
         $filename = 'data-requests-client-' . $this->clientId . '-' . date('YmdHis') . '.csv';
         $headers = [

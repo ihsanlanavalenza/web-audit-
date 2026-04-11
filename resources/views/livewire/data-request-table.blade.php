@@ -48,20 +48,211 @@
         </div>
     @else
         {{-- Data Request Table --}}
-        <div class="glass-card overflow-hidden">
-            <div class="overflow-x-auto">
+        <div class="glass-card overflow-hidden" x-data="{ openFilter: null }">
+            <div class="overflow-x-auto overflow-y-visible">
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th class="w-24">Section / No.</th>
-                            <th>Account / Process</th>
+                            <th class="w-24" colspan="2">
+                                <div class="th-filter">
+                                    <span>Section / No.</span>
+                                    <button type="button"
+                                        class="th-filter-trigger {{ $filterSectionNo !== '' ? 'is-active' : '' }}"
+                                        @click="openFilter = openFilter === 'section_no' ? null : 'section_no'"
+                                        :aria-expanded="openFilter === 'section_no'">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M3 4.5h18m-15 6h12m-9 6h6" />
+                                        </svg>
+                                    </button>
+                                    <div class="th-filter-menu" x-cloak x-show="openFilter === 'section_no'"
+                                        x-transition.origin.top.right @click.outside="openFilter = null">
+                                        <label class="th-filter-label">Cari Section / No.</label>
+                                        <input wire:model.live.debounce.300ms="filterSectionNo" type="text"
+                                            class="form-input text-xs" placeholder="Contoh: A / A.1">
+                                        <div class="th-filter-actions">
+                                            <button type="button" class="th-filter-clear"
+                                                @click="$wire.set('filterSectionNo', ''); openFilter = null">Bersihkan</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="th-filter">
+                                    <span>Account / Process</span>
+                                    <button type="button"
+                                        class="th-filter-trigger {{ $filterAccountProcess !== '' ? 'is-active' : '' }}"
+                                        @click="openFilter = openFilter === 'account_process' ? null : 'account_process'"
+                                        :aria-expanded="openFilter === 'account_process'">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M3 4.5h18m-15 6h12m-9 6h6" />
+                                        </svg>
+                                    </button>
+                                    <div class="th-filter-menu" x-cloak x-show="openFilter === 'account_process'"
+                                        x-transition.origin.top.right @click.outside="openFilter = null">
+                                        <label class="th-filter-label">Cari Account / Process</label>
+                                        <input wire:model.live.debounce.300ms="filterAccountProcess" type="text"
+                                            class="form-input text-xs" placeholder="Ketik kata kunci">
+                                        <div class="th-filter-actions">
+                                            <button type="button" class="th-filter-clear"
+                                                @click="$wire.set('filterAccountProcess', ''); openFilter = null">Bersihkan</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </th>
                             <th>Description</th>
-                            <th>Request Date</th>
-                            <th>Expected Received</th>
-                            <th>Input File</th>
-                            <th>Status</th>
+                            <th>
+                                <div class="th-filter">
+                                    <span>Request Date</span>
+                                    <button type="button"
+                                        class="th-filter-trigger {{ $filterRequestDateFrom || $filterRequestDateTo ? 'is-active' : '' }}"
+                                        @click="openFilter = openFilter === 'request_date' ? null : 'request_date'"
+                                        :aria-expanded="openFilter === 'request_date'">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M8 7V3m8 4V3m-9 8h10m-11 9h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v11a2 2 0 002 2z" />
+                                        </svg>
+                                    </button>
+                                    <div class="th-filter-menu" x-cloak x-show="openFilter === 'request_date'"
+                                        x-transition.origin.top.right @click.outside="openFilter = null">
+                                        <label class="th-filter-label">From</label>
+                                        <input wire:model.live="filterRequestDateFrom" type="date"
+                                            class="form-input text-xs">
+                                        <label class="th-filter-label mt-2">To</label>
+                                        <input wire:model.live="filterRequestDateTo" type="date"
+                                            class="form-input text-xs">
+                                        <div class="th-filter-actions">
+                                            <button type="button" class="th-filter-clear"
+                                                @click="$wire.set('filterRequestDateFrom', null); $wire.set('filterRequestDateTo', null); openFilter = null">Bersihkan</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="th-filter">
+                                    <span>Expected Received</span>
+                                    <button type="button"
+                                        class="th-filter-trigger {{ $filterExpectedReceivedFrom || $filterExpectedReceivedTo ? 'is-active' : '' }}"
+                                        @click="openFilter = openFilter === 'expected_received' ? null : 'expected_received'"
+                                        :aria-expanded="openFilter === 'expected_received'">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M8 7V3m8 4V3m-9 8h10m-11 9h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v11a2 2 0 002 2z" />
+                                        </svg>
+                                    </button>
+                                    <div class="th-filter-menu" x-cloak x-show="openFilter === 'expected_received'"
+                                        x-transition.origin.top.right @click.outside="openFilter = null">
+                                        <label class="th-filter-label">From</label>
+                                        <input wire:model.live="filterExpectedReceivedFrom" type="date"
+                                            class="form-input text-xs">
+                                        <label class="th-filter-label mt-2">To</label>
+                                        <input wire:model.live="filterExpectedReceivedTo" type="date"
+                                            class="form-input text-xs">
+                                        <div class="th-filter-actions">
+                                            <button type="button" class="th-filter-clear"
+                                                @click="$wire.set('filterExpectedReceivedFrom', null); $wire.set('filterExpectedReceivedTo', null); openFilter = null">Bersihkan</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="th-filter">
+                                    <span>Input File</span>
+                                    <button type="button"
+                                        class="th-filter-trigger {{ $filterInputFileState !== '' ? 'is-active' : '' }}"
+                                        @click="openFilter = openFilter === 'input_file' ? null : 'input_file'"
+                                        :aria-expanded="openFilter === 'input_file'">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M3 4.5h18m-15 6h12m-9 6h6" />
+                                        </svg>
+                                    </button>
+                                    <div class="th-filter-menu" x-cloak x-show="openFilter === 'input_file'"
+                                        x-transition.origin.top.right @click.outside="openFilter = null">
+                                        <label class="th-filter-label">State Input File</label>
+                                        <select wire:model.live="filterInputFileState" class="form-input text-xs">
+                                            <option value="">Semua</option>
+                                            <option value="uploaded">Sudah Upload</option>
+                                            <option value="not_uploaded">Belum Upload</option>
+                                        </select>
+                                        <div class="th-filter-actions">
+                                            <button type="button" class="th-filter-clear"
+                                                @click="$wire.set('filterInputFileState', ''); openFilter = null">Bersihkan</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="th-filter">
+                                    <span>Status</span>
+                                    <button type="button"
+                                        class="th-filter-trigger {{ !empty($filterStatuses) ? 'is-active' : '' }}"
+                                        @click="openFilter = openFilter === 'status' ? null : 'status'"
+                                        :aria-expanded="openFilter === 'status'">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M3 4.5h18m-15 6h12m-9 6h6" />
+                                        </svg>
+                                    </button>
+                                    <div class="th-filter-menu" x-cloak x-show="openFilter === 'status'"
+                                        x-transition.origin.top.right @click.outside="openFilter = null">
+                                        <label class="th-filter-label">Pilih Status</label>
+                                        <div class="th-filter-checklist">
+                                            @foreach ($statuses as $key => $label)
+                                                <label class="th-filter-check">
+                                                    <input type="checkbox" value="{{ $key }}"
+                                                        wire:model.live="filterStatuses">
+                                                    <span>{{ $label }}</span>
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                        <div class="th-filter-actions">
+                                            <button type="button" class="th-filter-clear"
+                                                @click="$wire.set('filterStatuses', @js(array_keys($statuses))); openFilter = null">Pilih Semua</button>
+                                            <button type="button" class="th-filter-clear"
+                                                @click="$wire.set('filterStatuses', []); openFilter = null">Bersihkan</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </th>
                             <th>Last Update</th>
-                            <th>Date Input</th>
+                            <th>
+                                <div class="th-filter">
+                                    <span>Date Input</span>
+                                    <button type="button"
+                                        class="th-filter-trigger {{ $filterDateInputFrom || $filterDateInputTo ? 'is-active' : '' }}"
+                                        @click="openFilter = openFilter === 'date_input' ? null : 'date_input'"
+                                        :aria-expanded="openFilter === 'date_input'">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M8 7V3m8 4V3m-9 8h10m-11 9h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v11a2 2 0 002 2z" />
+                                        </svg>
+                                    </button>
+                                    <div class="th-filter-menu" x-cloak x-show="openFilter === 'date_input'"
+                                        x-transition.origin.top.right @click.outside="openFilter = null">
+                                        <label class="th-filter-label">From</label>
+                                        <input wire:model.live="filterDateInputFrom" type="date"
+                                            class="form-input text-xs">
+                                        <label class="th-filter-label mt-2">To</label>
+                                        <input wire:model.live="filterDateInputTo" type="date"
+                                            class="form-input text-xs">
+                                        <div class="th-filter-actions">
+                                            <button type="button" class="th-filter-clear"
+                                                @click="$wire.set('filterDateInputFrom', null); $wire.set('filterDateInputTo', null); openFilter = null">Bersihkan</button>
+                                            <button type="button" class="th-filter-clear" wire:click="resetFilters"
+                                                @click="openFilter = null">Reset Semua</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </th>
                             <th>Comment (Client)</th>
                             <th>Comment (Auditor)</th>
                             @if (auth()->user()->isAuditor())
