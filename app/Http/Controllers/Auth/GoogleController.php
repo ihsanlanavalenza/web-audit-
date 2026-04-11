@@ -101,12 +101,17 @@ class GoogleController extends Controller
             Auth::login($newUser);
             session()->regenerate();
 
-            return redirect()->route('dashboard')->with(
-                'success',
-                $invitation
-                    ? 'Akun berhasil dibuat dan undangan Anda sudah diaktifkan.'
-                    : 'Akun berhasil dibuat otomatis lewat Google.'
-            );
+            if (!$invitation) {
+                session(['google_role_selection_user_id' => $newUser->id]);
+
+                return redirect()->route('google.role-selection')->with(
+                    'success',
+                    'Akun berhasil dibuat otomatis lewat Google. Pilih role Anda untuk melanjutkan.'
+                );
+            }
+
+            return redirect()->route('dashboard')
+                ->with('success', 'Akun berhasil dibuat dan undangan Anda sudah diaktifkan.');
         } catch (\Throwable $e) {
             report($e);
 

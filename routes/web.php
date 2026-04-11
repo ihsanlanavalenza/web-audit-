@@ -11,6 +11,7 @@ use App\Livewire\SuperAdminDashboard;
 use App\Livewire\UserManager;
 use App\Livewire\AdminKapManager;
 use App\Livewire\AdminClientManager;
+use App\Livewire\GoogleRoleSelection;
 use App\Http\Controllers\Auth\GoogleController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -36,6 +37,8 @@ Route::middleware('guest')->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth')->group(function () {
+    Route::get('/google/role-selection', GoogleRoleSelection::class)->name('google.role-selection');
+
     Route::get('/', Dashboard::class)->name('dashboard');
     Route::get('/dashboard', fn() => redirect()->route('dashboard'));
 
