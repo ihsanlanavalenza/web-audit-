@@ -77,15 +77,25 @@ class ClientManager extends Component
                 'alamat' => $this->alamat,
                 'tahun_audit' => $this->tahun_audit,
             ]);
+
+            if ($kap->user_id) {
+                $client->authorizedUsers()->syncWithoutDetaching([(int) $kap->user_id]);
+            }
+
             session()->flash('success', 'Klien berhasil diperbarui!');
         } else {
-            $kap->clients()->create([
+            $client = $kap->clients()->create([
                 'nama_client' => $this->nama_client,
                 'nama_pic' => $this->nama_pic,
                 'no_contact' => $this->no_contact,
                 'alamat' => $this->alamat,
                 'tahun_audit' => $this->tahun_audit,
             ]);
+
+            if ($kap->user_id) {
+                $client->authorizedUsers()->syncWithoutDetaching([(int) $kap->user_id]);
+            }
+
             session()->flash('success', 'Klien berhasil ditambahkan!');
         }
 

@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Mail\FollowupDataRequestMail;
 use App\Models\DataRequest;
 use App\Models\Invitation;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Mail;
@@ -21,7 +22,7 @@ class SendFollowupReminders extends Command
         // Cari data request yang:
         // 1. expected_received sudah lewat jatuh tempo
         // 2. Belum ada file yang diupload (input_file = null atau '[]')
-        // 3. Belum pernah dikirim followup (followup_sent_at = null)
+        // 3. Followup belum dikirim hari ini (agar bisa kirim ulang harian sampai ada upload)
         /** @var \Illuminate\Database\Eloquent\Collection<int, DataRequest> $overdueRequests */
         $overdueRequests = DataRequest::query()->where(function (Builder $q) {
             $q->whereNull('input_file')
@@ -29,9 +30,12 @@ class SendFollowupReminders extends Command
                 ->orWhere('input_file', '')
                 ->orWhere('input_file', 'null');
         })
-            ->whereNull('followup_sent_at')
+            ->where(function (Builder $q) {
+                $q->whereNull('followup_sent_at')
+                    ->orWhere('followup_sent_at', '<', now()->startOfDay());
+            })
             ->whereNotNull('expected_received')
-            ->where('expected_received', '<', now()->startOfDay())
+            ->whereDate('expected_received', '<', now()->startOfDay())
             ->where('status', '!=', DataRequest::STATUS_NOT_APPLICABLE)
             ->with(['client', 'kapProfile.user'])
             ->get();
@@ -52,45 +56,61 @@ class SendFollowupReminders extends Command
                 continue;
             }
 
-            // Cari email auditi dari invitation
-            $invitation = Invitation::where('client_id', $client->id)
+            $auditiEmails = Invitation::query()
+                ->where('role', 'auditi')
+                ->where('client_id', $client->id)
                 ->where('kap_id', $kap->id)
                 ->whereNotNull('accepted_at')
-                ->first();
+                ->where(function (Builder $q) {
+                    $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                })
+                ->pluck('email');
 
-            if (!$invitation || !$invitation->email) {
-                $this->warn("⚠️ Tidak ada auditi terdaftar untuk client '{$client->nama_client}', skipping.");
+            $auditorEmails = User::query()
+                ->where('role', 'auditor')
+                ->whereHas('clients', function (Builder $q) use ($client) {
+                    $q->where('clients.id', $client->id);
+                })
+                ->pluck('email');
+
+            $recipientEmails = $auditiEmails
+                ->merge($auditorEmails)
+                ->map(fn($email) => strtolower(trim((string) $email)))
+                ->filter()
+                ->unique()
+                ->values();
+
+            if ($recipientEmails->isEmpty()) {
+                $this->warn("⚠️ Tidak ada penerima aktif untuk client '{$client->nama_client}', skipping.");
                 continue;
             }
 
-            $daysOverdue = (int) now()->diffInDays($request->expected_received);
+            $daysOverdue = max(1, (int) $request->expected_received->startOfDay()->diffInDays(now()->startOfDay()));
+            $sentForRequest = 0;
 
-            // Dapatkan email auditor
-            $auditorEmail = $kap->user ? $kap->user->email : null;
+            foreach ($recipientEmails as $recipientEmail) {
+                try {
+                    Mail::to($recipientEmail)->send(
+                        new FollowupDataRequestMail(
+                            dataRequest: $request,
+                            clientName: $client->nama_client,
+                            kapName: $kap->nama_kap,
+                            daysOverdue: $daysOverdue,
+                        )
+                    );
 
-            try {
-                $mail = Mail::to($invitation->email);
+                    $sentForRequest++;
+                    $sent++;
 
-                if ($auditorEmail) {
-                    $mail->cc($auditorEmail);
+                    $this->info("📧 Email dikirim ke {$recipientEmail} untuk request #{$request->no} ({$request->section})");
+                } catch (\Throwable $e) {
+                    $this->error("❌ Gagal kirim ke {$recipientEmail}: {$e->getMessage()}");
                 }
+            }
 
-                $mail->send(
-                    new FollowupDataRequestMail(
-                        dataRequest: $request,
-                        clientName: $client->nama_client,
-                        kapName: $kap->nama_kap,
-                        daysOverdue: $daysOverdue,
-                    )
-                );
-
-                // Tandai sudah dikirim
+            if ($sentForRequest > 0) {
+                // Simpan timestamp kirim terakhir agar command tetap idempotent per hari.
                 $request->update(['followup_sent_at' => now()]);
-                $sent++;
-
-                $this->info("📧 Email dikirim ke {$invitation->email} untuk request #{$request->no} ({$request->section})");
-            } catch (\Exception $e) {
-                $this->error("❌ Gagal kirim ke {$invitation->email}: {$e->getMessage()}");
             }
         }
 

@@ -5,7 +5,6 @@ namespace App\Livewire;
 use App\Models\DataRequest;
 use App\Models\Client;
 use App\Models\User;
-use App\Models\KapProfile;
 use App\Models\Invitation;
 use App\Notifications\DataRequestFileUploadedNotification;
 use App\Notifications\DataRequestRevisionNotification;
@@ -42,6 +41,7 @@ class DataRequestTable extends Component
 
     // File & comments
     public $uploadFiles = [];
+    public ?string $uploadError = null;
     public ?int $commentRowId = null;
     public string $newComment = '';
 
@@ -73,10 +73,12 @@ class DataRequestTable extends Component
         // If auditi, find their client_id from invitation
         if ($user->isAuditi() && !$this->clientId) {
             $invitation = Invitation::where('email', $user->email)
+                ->where('role', 'auditi')
                 ->whereNotNull('accepted_at')
                 ->where(function (Builder $q) {
                     $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
                 })
+                ->latest('accepted_at')
                 ->first();
             $this->clientId = $invitation?->client_id;
         }
@@ -88,16 +90,27 @@ class DataRequestTable extends Component
     {
         if ($this->clientId) {
             $invitations = Invitation::where('client_id', $this->clientId)
+                ->where('role', 'auditi')
                 ->whereNotNull('accepted_at')
+                ->where(function (Builder $q) {
+                    $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                })
                 ->pluck('email');
 
-            $this->availablePics = User::whereIn('email', $invitations)->get(['id', 'name', 'email']);
+            $this->availablePics = User::where('role', 'auditi')
+                ->whereIn('email', $invitations)
+                ->get(['id', 'name', 'email']);
+
+            return;
         }
+
+        $this->availablePics = [];
     }
 
     public function updatedClientId(): void
     {
         $this->authorizeClientAccess();
+        $this->uploadError = null;
         $this->resetFilters();
         $this->loadPics();
     }
@@ -201,6 +214,7 @@ class DataRequestTable extends Component
     public function deleteRow(int $id)
     {
         $this->authorizeClientAccess();
+        $this->uploadError = null;
         $this->getQuery()->findOrFail($id)->delete();
         session()->flash('success', 'Data Request berhasil dihapus!');
     }
@@ -213,6 +227,7 @@ class DataRequestTable extends Component
     public function uploadFilesForRow(int $id)
     {
         $this->authorizeClientAccess();
+        $this->uploadError = null;
 
         $this->validate([
             'uploadFiles' => 'required|array|min:1',
@@ -223,67 +238,85 @@ class DataRequestTable extends Component
         $files = array_values(array_filter($files));
 
         if (count($files) === 0) {
+            $this->uploadError = 'Tidak ada file yang dipilih untuk diunggah.';
             session()->flash('error', 'Tidak ada file yang dipilih untuk diunggah.');
             return;
         }
 
-        $row = $this->getQuery()->findOrFail($id);
+        try {
+            $row = $this->getQuery()->findOrFail($id);
 
-        $currentInputFiles = $row->input_file ?? [];
-        if (!is_array($currentInputFiles)) {
-            $currentInputFiles = [];
-        }
+            if (!$this->clientId || (int) $row->client_id !== (int) $this->clientId) {
+                abort(403);
+            }
 
-        // Format detect: if array elements aren't associative with "version", convert them first.
-        $needsMigration = false;
-        if (count($currentInputFiles) > 0 && !isset($currentInputFiles[0]['version'])) {
-            $needsMigration = true;
-        }
+            $currentInputFiles = $row->input_file ?? [];
+            if (!is_array($currentInputFiles)) {
+                $currentInputFiles = [];
+            }
 
-        if ($needsMigration) {
-            $oldFiles = $currentInputFiles;
-            $currentInputFiles = [
-                [
-                    'version' => 1,
-                    'files' => $oldFiles,
-                    'uploaded_at' => $row->date_input ? $row->date_input->format('Y-m-d H:i:s') : now()->format('Y-m-d H:i:s'),
-                    'uploaded_by' => 'Auto-migrated' // unknown (old logic)
-                ]
+            // Format detect: if array elements aren't associative with "version", convert them first.
+            $needsMigration = false;
+            if (count($currentInputFiles) > 0 && !isset($currentInputFiles[0]['version'])) {
+                $needsMigration = true;
+            }
+
+            if ($needsMigration) {
+                $oldFiles = $currentInputFiles;
+                $currentInputFiles = [
+                    [
+                        'version' => 1,
+                        'files' => $oldFiles,
+                        'uploaded_at' => $row->date_input ? $row->date_input->format('Y-m-d H:i:s') : now()->format('Y-m-d H:i:s'),
+                        'uploaded_by' => 'Auto-migrated', // unknown (old logic)
+                    ]
+                ];
+            }
+
+            $nextVersionNumber = count($currentInputFiles) + 1;
+
+            $newPaths = [];
+            foreach ($files as $file) {
+                $newPaths[] = $file->store("uploads/{$this->clientId}", 'public');
+            }
+
+            $currentInputFiles[] = [
+                'version' => $nextVersionNumber,
+                'files' => $newPaths,
+                'uploaded_at' => now()->format('Y-m-d H:i:s'),
+                'uploaded_by' => Auth::user()?->name ?? 'Unknown',
             ];
+
+            $row->update([
+                'input_file' => $currentInputFiles, // always an array of versions now
+                'status' => DataRequest::STATUS_ON_REVIEW,
+                'date_input' => now(), // track latest action time
+            ]);
+
+            $row->refresh();
+
+            // Notify all auditors that currently have access to this client.
+            $auditors = User::query()
+                ->where('role', 'auditor')
+                ->whereHas('clients', function (Builder $q) use ($row) {
+                    $q->where('clients.id', $row->client_id);
+                })
+                ->get();
+
+            if ($auditors->isNotEmpty()) {
+                Notification::send($auditors, new DataRequestFileUploadedNotification($row));
+            }
+
+            $this->expandedFileRow = null;
+            session()->flash('success', count($newPaths) . ' file berhasil diupload sebagai versi ' . $nextVersionNumber . '! Status berubah ke On Review.');
+        } catch (\Throwable $e) {
+            report($e);
+
+            $this->uploadError = 'Upload gagal diproses di server. Coba lagi atau hubungi admin.';
+            session()->flash('error', 'Upload file gagal diproses. Periksa ukuran file dan coba lagi.');
+        } finally {
+            $this->uploadFiles = [];
         }
-
-        $nextVersionNumber = count($currentInputFiles) + 1;
-
-        $newPaths = [];
-        foreach ($files as $file) {
-            $newPaths[] = $file->store("uploads/{$this->clientId}", 'public');
-        }
-
-        $currentInputFiles[] = [
-            'version' => $nextVersionNumber,
-            'files' => $newPaths,
-            'uploaded_at' => now()->format('Y-m-d H:i:s'),
-            'uploaded_by' => Auth::user()?->name ?? 'Unknown',
-        ];
-
-        $row->update([
-            'input_file' => $currentInputFiles, // always an array of versions now
-            'status' => DataRequest::STATUS_ON_REVIEW,
-            'date_input' => now(), // track latest action time
-        ]);
-
-        $row->refresh();
-
-        // Trigger Notification ke Auditor -> bahwa ada unggahan revisi/dokumen baru
-        if ($row->kap_id) {
-            $auditors = User::where('id', KapProfile::where('id', $row->kap_id)->value('user_id'))->get();
-
-            Notification::send($auditors, new DataRequestFileUploadedNotification($row));
-        }
-
-        $this->uploadFiles = [];
-        $this->expandedFileRow = null;
-        session()->flash('success', count($newPaths) . ' file berhasil diupload sebagai versi ' . $nextVersionNumber . '! Status berubah ke On Review.');
     }
 
     public function updateStatus(int $id, string $status)
@@ -317,11 +350,17 @@ class DataRequestTable extends Component
             }
         } else {
             $invitationsEmails = Invitation::where('client_id', $this->clientId)
+                ->where('role', 'auditi')
                 ->whereNotNull('accepted_at')
+                ->where(function (Builder $q) {
+                    $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                })
                 ->pluck('email');
 
             /** @var \Illuminate\Database\Eloquent\Collection<int, User> $auditis */
-            $auditis = User::whereIn('email', $invitationsEmails)->get();
+            $auditis = User::where('role', 'auditi')
+                ->whereIn('email', $invitationsEmails)
+                ->get();
         }
 
         Notification::send($auditis, new DataRequestRevisionNotification($row));
@@ -435,16 +474,7 @@ class DataRequestTable extends Component
         }
 
         if ($user->isAuditor()) {
-            $kapId = $user->kapProfile?->id;
-            if (!$kapId) {
-                abort(403);
-            }
-
-            $isOwned = Client::where('id', $this->clientId)
-                ->where('kap_id', $kapId)
-                ->exists();
-
-            if (!$isOwned) {
+            if (!$user->hasClientAccess($this->clientId)) {
                 abort(403);
             }
 
@@ -453,6 +483,7 @@ class DataRequestTable extends Component
 
         if ($user->isAuditi()) {
             $allowed = Invitation::where('email', $user->email)
+                ->where('role', 'auditi')
                 ->whereNotNull('accepted_at')
                 ->where(function (Builder $q) {
                     $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
@@ -475,10 +506,16 @@ class DataRequestTable extends Component
         }
 
         if ($user->isAuditor()) {
-            return $user->kapProfile?->id;
+            if ($this->clientId) {
+                return Client::where('id', $this->clientId)->value('kap_id');
+            }
+
+            return $user->resolveKapId();
         }
         $invitation = Invitation::where('email', $user->email)
+            ->where('role', 'auditi')
             ->whereNotNull('accepted_at')
+            ->latest('accepted_at')
             ->first();
         return $invitation?->kap_id;
     }
@@ -543,8 +580,8 @@ class DataRequestTable extends Component
         $clients = [];
         /** @var User|null $user */
         $user = Auth::user();
-        if ($user && $user->isAuditor() && $user->kapProfile) {
-            $clients = $user->kapProfile->clients;
+        if ($user && $user->isAuditor()) {
+            $clients = $user->clients()->orderBy('nama_client')->get();
         }
 
         return view('livewire.data-request-table', [

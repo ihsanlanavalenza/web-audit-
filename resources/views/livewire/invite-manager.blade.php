@@ -84,9 +84,8 @@
                         <option value="auditi">🔴 Auditi</option>
                     </select>
                 </div>
-                @if($role === 'auditi')
                 <div>
-                    <label class="form-label">Klien (untuk akses Auditi)</label>
+                    <label class="form-label">Klien (akses {{ $role === 'auditor' ? 'Auditor' : 'Auditi' }})</label>
                     <select wire:model="client_id" class="form-input">
                         <option value="">-- Pilih Klien --</option>
                         @foreach($clients as $client)
@@ -95,7 +94,6 @@
                     </select>
                     @error('client_id') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>
-                @endif
                 <div class="flex gap-3 pt-2">
                     <button type="submit" class="btn-auditor">Buat Undangan</button>
                     <button type="button" wire:click="$set('showModal', false)" class="btn-ghost">Batal</button>

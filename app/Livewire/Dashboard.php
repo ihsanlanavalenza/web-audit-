@@ -3,6 +3,8 @@
 namespace App\Livewire;
 
 use App\Models\User;
+use App\Models\DataRequest;
+use App\Models\Invitation;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -32,22 +34,33 @@ class Dashboard extends Component
         $data = [];
 
         if ($user->isAuditor()) {
-            $kap = $user->kapProfile;
+            $kapId = $user->resolveKapId();
+            $accessibleClientIds = $user->clients()->pluck('clients.id');
+
+            $requestsQuery = DataRequest::query()
+                ->whereIn('client_id', $accessibleClientIds);
+
             $data = [
-                'hasKap' => !!$kap,
-                'totalClients' => $kap ? $kap->clients()->count() : 0,
-                'totalRequests' => $kap ? $kap->dataRequests()->count() : 0,
-                'pendingInvites' => $kap ? $kap->invitations()->pending()->count() : 0,
-                'statusCounts' => $kap ? $kap->dataRequests()
+                'hasKap' => !is_null($kapId),
+                'totalClients' => $accessibleClientIds->count(),
+                'totalRequests' => (clone $requestsQuery)->count(),
+                'pendingInvites' => $kapId ? Invitation::query()->where('kap_id', $kapId)->pending()->count() : 0,
+                'statusCounts' => (clone $requestsQuery)
                     ->selectRaw('status, count(*) as total')
                     ->groupBy('status')
                     ->pluck('total', 'status')
-                    ->toArray() : [],
+                    ->toArray(),
             ];
         } else {
             // Auditi - find clients they are invited to
-            $invitation = \App\Models\Invitation::where('email', $user->email)
+            $invitation = Invitation::query()
+                ->where('role', 'auditi')
+                ->where('email', $user->email)
                 ->whereNotNull('accepted_at')
+                ->where(function ($q) {
+                    $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                })
+                ->latest('accepted_at')
                 ->first();
             $data = [
                 'invitation' => $invitation,

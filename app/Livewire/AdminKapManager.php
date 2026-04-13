@@ -3,8 +3,10 @@
 namespace App\Livewire;
 
 use App\Models\KapProfile;
+use App\Models\Client;
 use App\Models\User;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -133,6 +135,31 @@ class AdminKapManager extends Component
 
         if ($newOwnerId) {
             User::whereKey($newOwnerId)->update(['kap_id' => $kapId]);
+        }
+
+        $clientIds = Client::query()
+            ->where('kap_id', $kapId)
+            ->pluck('id');
+
+        if ($newOwnerId && $clientIds->isNotEmpty()) {
+            $timestamp = now();
+            $rows = $clientIds->map(function ($clientId) use ($newOwnerId, $timestamp) {
+                return [
+                    'user_id' => (int) $newOwnerId,
+                    'client_id' => (int) $clientId,
+                    'created_at' => $timestamp,
+                    'updated_at' => $timestamp,
+                ];
+            })->all();
+
+            DB::table('client_user_access')->insertOrIgnore($rows);
+        }
+
+        if ($oldOwnerId && $oldOwnerId !== $newOwnerId && $clientIds->isNotEmpty()) {
+            DB::table('client_user_access')
+                ->where('user_id', $oldOwnerId)
+                ->whereIn('client_id', $clientIds)
+                ->delete();
         }
     }
 

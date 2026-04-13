@@ -39,8 +39,7 @@ class InviteManager extends Component
             'email' => 'required|email',
             'role' => 'required|in:auditor,auditi',
             'client_id' => [
-                'nullable',
-                'required_if:role,auditi',
+                'required',
                 Rule::exists('clients', 'id')->where(function ($q) use ($kap) {
                     $q->where('kap_id', $kap->id);
                 }),
@@ -53,11 +52,7 @@ class InviteManager extends Component
             ->whereRaw('LOWER(email) = ?', [$normalizedEmail])
             ->where('kap_id', $kap->id)
             ->where('role', $this->role)
-            ->when(
-                $this->role === 'auditi',
-                fn($q) => $q->where('client_id', $this->client_id),
-                fn($q) => $q->whereNull('client_id')
-            )
+            ->where('client_id', $this->client_id)
             ->pending()
             ->active()
             ->exists();
@@ -69,7 +64,7 @@ class InviteManager extends Component
 
         $invitation = Invitation::create([
             'kap_id' => $kap->id,
-            'client_id' => $this->role === 'auditi' ? $this->client_id : null,
+            'client_id' => $this->client_id,
             'email' => $normalizedEmail,
             'role' => $this->role,
             'token' => Invitation::generateToken(),

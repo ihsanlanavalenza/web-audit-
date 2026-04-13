@@ -61,6 +61,31 @@ class User extends Authenticatable
         return $this->hasOne(KapProfile::class);
     }
 
+    public function assignedKapProfile()
+    {
+        return $this->belongsTo(KapProfile::class, 'kap_id');
+    }
+
+    public function clients()
+    {
+        return $this->belongsToMany(Client::class, 'client_user_access')
+            ->withTimestamps();
+    }
+
+    public function hasClientAccess(int $clientId): bool
+    {
+        return $this->clients()->where('clients.id', $clientId)->exists();
+    }
+
+    public function resolveKapId(): ?int
+    {
+        if ($this->kap_id) {
+            return (int) $this->kap_id;
+        }
+
+        return $this->kapProfile?->id;
+    }
+
     public function invitations()
     {
         return $this->hasMany(Invitation::class);

@@ -35,6 +35,19 @@ class Client extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::created(function (Client $client) {
+            $client->syncKapOwnerAccess();
+        });
+
+        static::updated(function (Client $client) {
+            if ($client->wasChanged('kap_id')) {
+                $client->syncKapOwnerAccess((int) $client->getOriginal('kap_id'));
+            }
+        });
+    }
+
     public function kapProfile()
     {
         return $this->belongsTo(KapProfile::class, 'kap_id');
@@ -43,5 +56,26 @@ class Client extends Model
     public function dataRequests()
     {
         return $this->hasMany(DataRequest::class);
+    }
+
+    public function authorizedUsers()
+    {
+        return $this->belongsToMany(User::class, 'client_user_access')
+            ->withTimestamps();
+    }
+
+    public function syncKapOwnerAccess(?int $oldKapId = null): void
+    {
+        $newOwnerId = KapProfile::query()->whereKey($this->kap_id)->value('user_id');
+        if ($newOwnerId) {
+            $this->authorizedUsers()->syncWithoutDetaching([(int) $newOwnerId]);
+        }
+
+        if ($oldKapId && $oldKapId !== (int) $this->kap_id) {
+            $oldOwnerId = KapProfile::query()->whereKey($oldKapId)->value('user_id');
+            if ($oldOwnerId && (int) $oldOwnerId !== (int) $newOwnerId) {
+                $this->authorizedUsers()->detach([(int) $oldOwnerId]);
+            }
+        }
     }
 }

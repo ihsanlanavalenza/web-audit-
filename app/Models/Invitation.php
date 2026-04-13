@@ -90,6 +90,8 @@ class Invitation extends Model
             $invitation->forceFill([
                 'accepted_at' => now(),
             ])->save();
+
+            static::syncClientAccessForAcceptedAuditor($user, $invitation);
         });
 
         $invitation->refresh();
@@ -182,6 +184,42 @@ class Invitation extends Model
             } catch (\Throwable $e) {
                 report($e);
             }
+        }
+    }
+
+    private static function syncClientAccessForAcceptedAuditor(User $user, self $invitation): void
+    {
+        if ($user->role !== 'auditor') {
+            return;
+        }
+
+        $rows = [];
+        $timestamp = now();
+
+        if ($invitation->client_id) {
+            $rows[] = [
+                'user_id' => $user->id,
+                'client_id' => $invitation->client_id,
+                'created_at' => $timestamp,
+                'updated_at' => $timestamp,
+            ];
+        } elseif ($invitation->kap_id) {
+            $clientIds = Client::query()
+                ->where('kap_id', $invitation->kap_id)
+                ->pluck('id');
+
+            foreach ($clientIds as $clientId) {
+                $rows[] = [
+                    'user_id' => $user->id,
+                    'client_id' => (int) $clientId,
+                    'created_at' => $timestamp,
+                    'updated_at' => $timestamp,
+                ];
+            }
+        }
+
+        if (!empty($rows)) {
+            DB::table('client_user_access')->insertOrIgnore($rows);
         }
     }
 

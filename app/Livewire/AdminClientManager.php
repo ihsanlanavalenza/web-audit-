@@ -80,10 +80,17 @@ class AdminClientManager extends Component
         ];
 
         if ($this->editId) {
-            Client::findOrFail($this->editId)->update($payload);
+            $client = Client::findOrFail($this->editId);
+            $oldKapId = (int) $client->kap_id;
+
+            $client->update($payload);
+            $this->syncOwnerAccessForClient($client, $oldKapId);
+
             session()->flash('success', 'Klien berhasil diperbarui.');
         } else {
-            Client::create($payload);
+            $client = Client::create($payload);
+            $this->syncOwnerAccessForClient($client);
+
             session()->flash('success', 'Klien berhasil ditambahkan.');
         }
 
@@ -114,6 +121,24 @@ class AdminClientManager extends Component
     private function resetForm(): void
     {
         $this->reset(['editId', 'nama_client', 'nama_pic', 'no_contact', 'alamat', 'tahun_audit', 'kap_id']);
+    }
+
+    private function syncOwnerAccessForClient(Client $client, ?int $oldKapId = null): void
+    {
+        $client->loadMissing('kapProfile');
+
+        $newOwnerId = $client->kapProfile?->user_id;
+        if ($newOwnerId) {
+            $client->authorizedUsers()->syncWithoutDetaching([(int) $newOwnerId]);
+        }
+
+        if ($oldKapId && $oldKapId !== (int) $client->kap_id) {
+            $oldOwnerId = KapProfile::query()->whereKey($oldKapId)->value('user_id');
+
+            if ($oldOwnerId && (int) $oldOwnerId !== (int) $newOwnerId) {
+                $client->authorizedUsers()->detach([(int) $oldOwnerId]);
+            }
+        }
     }
 
     #[Layout('layouts.app')]

@@ -28,6 +28,7 @@ Set production values in server environment:
 - `DB_PASSWORD=<set-on-server-only>`
 - `MAIL_MAILER=smtp`
 - `QUEUE_CONNECTION=database` (or redis)
+- `UPLOAD_MAX_FILESIZE >= 10M` dan `POST_MAX_SIZE >= 20M` (sesuai kebutuhan multi-file)
 
 Then run:
 
@@ -46,6 +47,18 @@ php artisan migrate --force
 php artisan storage:link
 ```
 
+Verifikasi permissions:
+
+```bash
+chmod -R 775 storage bootstrap/cache
+```
+
+Verifikasi symlink:
+
+```bash
+ls -la public | grep storage
+```
+
 ## 4. Queue Worker (Required)
 
 Notifications are queued. Ensure worker is running continuously.
@@ -62,6 +75,18 @@ If using cPanel shared hosting, use Cron Job fallback:
 
 ```bash
 * * * * * /usr/local/bin/php /home/auditinm/web-audit-system-/artisan queue:work --queue=mail,default --tries=5 --backoff=60 --timeout=120 --stop-when-empty >> /dev/null 2>&1
+```
+
+Tambahkan scheduler Laravel (wajib untuk followup reminder):
+
+```bash
+* * * * * /usr/local/bin/php /home/auditinm/web-audit-system-/artisan schedule:run >> /dev/null 2>&1
+```
+
+Uji command followup manual:
+
+```bash
+php artisan audit:send-followup
 ```
 
 ## 5. Smoke Tests
