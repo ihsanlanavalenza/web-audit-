@@ -145,8 +145,8 @@
                                         class="th-filter-trigger {{ $filterExpectedReceivedFrom || $filterExpectedReceivedTo ? 'is-active' : '' }}"
                                         @click="openFilter = openFilter === 'expected_received' ? null : 'expected_received'"
                                         :aria-expanded="openFilter === 'expected_received'">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2"
-                                            viewBox="0 0 24 24">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                            stroke-width="2" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                 d="M8 7V3m8 4V3m-9 8h10m-11 9h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v11a2 2 0 002 2z" />
                                         </svg>
@@ -173,8 +173,8 @@
                                         class="th-filter-trigger {{ $filterInputFileState !== '' ? 'is-active' : '' }}"
                                         @click="openFilter = openFilter === 'input_file' ? null : 'input_file'"
                                         :aria-expanded="openFilter === 'input_file'">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2"
-                                            viewBox="0 0 24 24">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                            stroke-width="2" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                 d="M3 4.5h18m-15 6h12m-9 6h6" />
                                         </svg>
@@ -201,8 +201,8 @@
                                         class="th-filter-trigger {{ !empty($filterStatuses) ? 'is-active' : '' }}"
                                         @click="openFilter = openFilter === 'status' ? null : 'status'"
                                         :aria-expanded="openFilter === 'status'">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2"
-                                            viewBox="0 0 24 24">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                            stroke-width="2" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                 d="M3 4.5h18m-15 6h12m-9 6h6" />
                                         </svg>
@@ -221,7 +221,8 @@
                                         </div>
                                         <div class="th-filter-actions">
                                             <button type="button" class="th-filter-clear"
-                                                @click="$wire.set('filterStatuses', @js(array_keys($statuses))); openFilter = null">Pilih Semua</button>
+                                                @click="$wire.set('filterStatuses', @js(array_keys($statuses))); openFilter = null">Pilih
+                                                Semua</button>
                                             <button type="button" class="th-filter-clear"
                                                 @click="$wire.set('filterStatuses', []); openFilter = null">Bersihkan</button>
                                         </div>
@@ -236,8 +237,8 @@
                                         class="th-filter-trigger {{ $filterDateInputFrom || $filterDateInputTo ? 'is-active' : '' }}"
                                         @click="openFilter = openFilter === 'date_input' ? null : 'date_input'"
                                         :aria-expanded="openFilter === 'date_input'">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2"
-                                            viewBox="0 0 24 24">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                            stroke-width="2" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                 d="M8 7V3m8 4V3m-9 8h10m-11 9h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v11a2 2 0 002 2z" />
                                         </svg>
@@ -379,7 +380,8 @@
                                                         <path stroke-linecap="round" stroke-linejoin="round"
                                                             d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                     </svg>
-                                                    <span class="text-slate-700 font-medium">File telah diupload:</span>
+                                                    <span class="text-slate-700 font-medium">File telah
+                                                        diupload:</span>
                                                 </div>
                                                 <div class="space-y-1">
                                                     @php
@@ -440,8 +442,7 @@
                                                         x-on:livewire-upload-start="uploading = true; $wire.set('uploadError', null)"
                                                         x-on:livewire-upload-finish="uploading = false; $wire.uploadFilesForRow({{ $req->id }})"
                                                         x-on:livewire-upload-error="uploading = false; $wire.set('uploadError', 'Upload gagal. Periksa ukuran file/server limit lalu coba lagi.')"
-                                                        class="hidden"
-                                                        id="file-add-{{ $req->id }}">
+                                                        class="hidden" id="file-add-{{ $req->id }}">
                                                     <label for="file-add-{{ $req->id }}"
                                                         class="cursor-pointer inline-flex flex-wrap justify-center items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition font-medium w-full">
                                                         <svg class="w-3 h-3" fill="none" stroke="currentColor"
@@ -470,8 +471,7 @@
                                                         x-on:livewire-upload-start="uploading = true; $wire.set('uploadError', null)"
                                                         x-on:livewire-upload-finish="uploading = false; $wire.uploadFilesForRow({{ $req->id }})"
                                                         x-on:livewire-upload-error="uploading = false; $wire.set('uploadError', 'Upload gagal. Periksa ukuran file/server limit lalu coba lagi.')"
-                                                        class="hidden"
-                                                        id="file-{{ $req->id }}">
+                                                        class="hidden" id="file-{{ $req->id }}">
                                                     <label for="file-{{ $req->id }}"
                                                         class="cursor-pointer flex justify-center items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition font-medium w-full">
                                                         <svg class="w-3 h-3" fill="none" stroke="currentColor"
