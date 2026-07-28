@@ -23,8 +23,9 @@
         </div>
         <div class="max-h-80 overflow-y-auto w-full">
             @forelse($notifications as $notification)
-                <div wire:click="markAsRead('{{ $notification->id }}')"
-                    class="p-3 border-b border-slate-50 hover:bg-slate-50 cursor-pointer transition-colors {{ is_null($notification->read_at) ? 'bg-blue-50/30' : '' }}">
+                <div wire:key="notification-{{ $notification->id }}"
+                    wire:click="markAsRead('{{ $notification->id }}')"
+                    class="p-3 border-b border-slate-50 hover:bg-slate-100 cursor-pointer transition-colors {{ is_null($notification->read_at) ? 'bg-slate-100/60' : 'bg-white' }}">
                     <p class="text-sm text-slate-800">{{ $notification->data['message'] ?? 'Notifikasi baru' }}</p>
                     <p class="text-xs text-slate-400 mt-1">{{ $notification->created_at->diffForHumans() }}</p>
                 </div>

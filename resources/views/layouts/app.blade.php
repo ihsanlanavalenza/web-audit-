@@ -218,7 +218,7 @@
 
             {{-- Mobile Header --}}
             <div
-                class="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white border-b border-slate-100 py-3 px-4 flex items-center justify-between shadow-sm">
+                class="lg:hidden fixed top-0 left-0 right-0 z-30 topbar-glass border-b border-slate-100 py-3 px-4 flex items-center justify-between shadow-sm">
                 <div class="flex items-center gap-3">
                     <button @click="sidebarOpen = !sidebarOpen" class="hamburger-btn" aria-label="Toggle menu">
                         <svg x-show="!sidebarOpen" class="w-5 h-5" fill="none" stroke="currentColor"
@@ -246,6 +246,7 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-3">
+                    <button id="theme-toggle-mobile" type="button" class="theme-toggle-btn" aria-label="Toggle light and dark mode" aria-pressed="false">☀️</button>
                     <livewire:notification-bell />
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
@@ -258,7 +259,7 @@
             <main class="flex-1 lg:ml-64">
                 {{-- Topbar Desktop --}}
                 <div
-                    class="hidden lg:flex items-center justify-between px-8 py-3 bg-white/50 backdrop-blur-md border-b border-slate-100/50 sticky top-0 z-20">
+                    class="hidden lg:flex items-center justify-between px-8 py-3 topbar-glass border-b border-slate-100/50 sticky top-0 z-20">
                     <div class="flex items-center gap-3">
                         <div class="brand-mark brand-mark--xs" aria-hidden="true">
                             <svg class="brand-icon" viewBox="0 0 36 36">
@@ -273,6 +274,7 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-4">
+                        <button id="theme-toggle" type="button" class="theme-toggle-btn" aria-label="Toggle light and dark mode" aria-pressed="false">☀️</button>
                         <livewire:notification-bell />
                         <div class="text-sm font-medium text-slate-700">{{ auth()->user()->name }}</div>
                     </div>
