@@ -430,30 +430,106 @@
                                                                             class="font-normal">{{ \Carbon\Carbon::parse($verRow['uploaded_at'] ?? now())->format('d M Y H:i') }}</span>)
                                                                     </div>
                                                                     <div class="space-y-1">
-                                                                        @foreach ($verRow['files'] as $path)
-                                                                            <div
-                                                                                class="flex items-center justify-between bg-white p-2 rounded border border-slate-100">
-                                                                                <span
-                                                                                    class="text-slate-500 truncate max-w-37.5"
-                                                                                    title="{{ basename($path) }}">{{ basename($path) }}</span>
-                                                                                <a href="{{ asset('storage/' . $path) }}"
-                                                                                    target="_blank"
-                                                                                    class="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition font-medium">
-                                                                                    <svg class="w-3 h-3"
-                                                                                        fill="none"
-                                                                                        stroke="currentColor"
-                                                                                        stroke-width="2"
-                                                                                        viewBox="0 0 24 24">
-                                                                                        <path stroke-linecap="round"
-                                                                                            stroke-linejoin="round"
-                                                                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                                                                    </svg>
-                                                                                    Unduh
-                                                                                </a>
-                                                                            </div>
-                                                                        @endforeach
+                                                                        <div x-data="{
+                                                                previewUrl: null,
+                                                                previewName: '',
+                                                                previewExt: null,
+                                                                openPreview(url, name) {
+                                                                    this.previewUrl = url;
+                                                                    this.previewName = name;
+                                                                    this.previewExt = url.split('.').pop().toLowerCase();
+                                                                },
+                                                                closePreview() {
+                                                                    this.previewUrl = null;
+                                                                    this.previewName = '';
+                                                                    this.previewExt = null;
+                                                                }
+                                                            }"
+                                                            class="space-y-1">
+                                                            @foreach ($verRow['files'] as $path)
+                                                                <div
+                                                                    class="flex items-center justify-between bg-white p-2 rounded border border-slate-100">
+                                                                    <span
+                                                                        class="text-slate-500 truncate max-w-37.5"
+                                                                        title="{{ basename($path) }}">{{ basename($path) }}</span>
+                                                                    <div class="flex items-center gap-2">
+                                                                        <button type="button"
+                                                                            @click.prevent="openPreview('{{ route('file.preview', ['path' => $path]) }}','{{ basename($path) }}')"
+                                                                            class="inline-flex items-center gap-1 px-2 py-1 bg-sky-600 text-white rounded hover:bg-sky-700 transition font-medium">
+                                                                            <svg class="w-3 h-3"
+                                                                                fill="none"
+                                                                                stroke="currentColor"
+                                                                                stroke-width="2"
+                                                                                viewBox="0 0 24 24">
+                                                                                <path stroke-linecap="round"
+                                                                                    stroke-linejoin="round"
+                                                                                    d="M15 10l-3 3-3-3m6 4v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2" />
+                                                                                <path stroke-linecap="round"
+                                                                                    stroke-linejoin="round"
+                                                                                    d="M6 6h12" />
+                                                                            </svg>
+                                                                            Lihat
+                                                                        </button>
+                                                                        <a href="{{ route('file.download', ['path' => $path]) }}"
+                                                                            target="_blank"
+                                                                            class="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition font-medium">
+                                                                            <svg class="w-3 h-3"
+                                                                                fill="none"
+                                                                                stroke="currentColor"
+                                                                                stroke-width="2"
+                                                                                viewBox="0 0 24 24">
+                                                                                <path stroke-linecap="round"
+                                                                                    stroke-linejoin="round"
+                                                                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                                            </svg>
+                                                                            Unduh
+                                                                        </a>
                                                                     </div>
                                                                 </div>
+                                                            @endforeach
+                                                            <div x-show="previewUrl" x-cloak
+                                                                @keydown.escape.window="closePreview()"
+                                                                class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70">
+                                                                <div @click.away="closePreview"
+                                                                    class="w-full max-w-[98vw] lg:max-w-7xl max-h-[96vh] overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-slate-900">
+                                                                    <div
+                                                                        class="flex items-center justify-between gap-4 border-b border-slate-200 px-4 py-3 bg-slate-50 dark:border-slate-700 dark:bg-slate-950">
+                                                                        <div>
+                                                                            <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">Preview Dokumen</div>
+                                                                            <div class="text-xs text-slate-500 dark:text-slate-400">{{ __(':name', ['name' => '']) }}</div>
+                                                                            <div class="text-xs text-slate-500 dark:text-slate-400" x-text="previewName"></div>
+                                                                        </div>
+                                                                        <button type="button"
+                                                                            @click="closePreview()"
+                                                                            class="inline-flex items-center justify-center h-9 w-9 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
+                                                                            ✕
+                                                                        </button>
+                                                                    </div>
+                                                                    <div class="relative max-h-[88vh] overflow-auto bg-slate-100 dark:bg-slate-950">
+                                                                        <template x-if="previewExt === 'pdf'">
+                                                                            <iframe :src="previewUrl"
+                                                                                class="min-h-[72vh] md:min-h-[76vh] w-full border-0"></iframe>
+                                                                        </template>
+                                                                        <template x-if="['png','jpg','jpeg','webp','gif'].includes(previewExt)">
+                                                                            <img :src="previewUrl"
+                                                                                alt="Preview Image"
+                                                                                class="min-h-[72vh] md:min-h-[76vh] w-full object-contain" />
+                                                                        </template>
+                                                                        <template
+                                                                            x-if="!['pdf','png','jpg','jpeg','webp','gif'].includes(previewExt)">
+                                                                            <div
+                                                                                class="flex min-h-[72vh] items-center justify-center p-6 text-center text-slate-700 dark:text-slate-300">
+                                                                                <div>
+                                                                                    <div class="mb-2 text-lg font-semibold">Preview tidak tersedia</div>
+                                                                                    <p class="text-sm text-slate-500 dark:text-slate-400">Tipe file ini tidak bisa ditampilkan langsung di browser. Silakan gunakan tombol Unduh untuk membuka file di aplikasi yang sesuai.</p>
+                                                                                </div>
+                                                                            </div>
+                                                                        </template>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                             @endif
                                                         @endforeach
                                                     </div>

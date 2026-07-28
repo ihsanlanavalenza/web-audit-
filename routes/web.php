@@ -138,6 +138,12 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/export-pdf', [PdfController::class, 'export'])
         ->name('export.pdf');
+
+    Route::get('/file-preview', [\App\Http\Controllers\FilePreviewController::class, 'preview'])
+        ->name('file.preview');
+
+    Route::get('/file-download', [\App\Http\Controllers\FilePreviewController::class, 'download'])
+        ->name('file.download');
 });
 
 
